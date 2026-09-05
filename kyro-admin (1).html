@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kyro Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0f1118; --card:#1a1d2a; --line:#2b3040; --text:#f3f4f8; --dim:#9aa0b4; --violet:#8b5cf6; --danger:#f87171; --green:#34d399; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, sans-serif; background: #0f1118; color: var(--text); min-height: 100vh; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+    header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; color: var(--violet); }
+    header button { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .box { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; cursor: pointer; min-height: 140px; }
+    .box:hover { border-color: var(--violet); }
+    .box h2 { font-size: 18px; margin-bottom: 8px; }
+    .box p { color: var(--dim); font-size: 13px; line-height: 1.5; }
+    .panel { display: none; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+    .panel.active { display: block; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+    .btn { border: 0; border-radius: 8px; padding: 7px 10px; cursor: pointer; margin-right: 6px; font-weight: 600; }
+    .ok { background: var(--green); color: #06281c; }
+    .warn { background: #fbbf24; color: #3b2a00; }
+    .bad { background: var(--danger); color: #3b0b0b; }
+    .ghost { background: #2a2f40; color: var(--text); }
+    textarea, select, input { width: 100%; background: #121522; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 8px 0 12px; font: inherit; }
+    .note { color: var(--dim); font-size: 13px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Kyro Admin</h1>
+    <div>
+      <button onclick="location.href='kyro-app.html'">Open user app</button>
+      <button onclick="logout()">Log out</button>
+    </div>
+  </header>
+  <div class="wrap">
+    <div class="grid">
+      <div class="box" onclick="showPanel('users')">
+        <h2>Users</h2>
+        <p>See every account. Make someone an admin from here.</p>
+      </div>
+      <div class="box" onclick="showPanel('suspend')">
+        <h2>Suspend / Ban</h2>
+        <p>Pause or block an account so they cannot sign in.</p>
+      </div>
+      <div class="box" onclick="showPanel('view')">
+        <h2>View</h2>
+        <p>Quick counts of users, admins, suspended, and banned accounts.</p>
+      </div>
+      <div class="box" onclick="showPanel('message')">
+        <h2>Message users</h2>
+        <p>Send a note to one user or to all users.</p>
+      </div>
+    </div>
+
+    <div class="panel" id="users"></div>
+    <div class="panel" id="suspend"></div>
+    <div class="panel" id="view"></div>
+    <div class="panel" id="message"></div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://chat-backend-tnii.onrender.com';
+    const token = localStorage.getItem('kyro_token') || '';
+    let me = null;
+    try { me = JSON.parse(localStorage.getItem('kyro_user') || 'null'); } catch (e) {}
+
+    if (!token) location.href = 'kyro-chat.html';
+
+    async function api(path, options = {}) {
+      const res = await fetch(API_BASE + path, Object.assign({}, options, {
+        headers: Object.assign({
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        }, options.headers || {})
+      }));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Request failed');
+      return data;
+    }
+
+    function logout() {
+      localStorage.removeItem('kyro_token');
+      localStorage.removeItem('kyro_user');
+      location.href = 'kyro-chat.html';
+    }
+
+    function showPanel(id) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      if (id === 'users' || id === 'suspend') loadUsers(id);
+      if (id === 'view') loadView();
+      if (id === 'message') loadMessage();
+    }
+
+    async function boot() {
+      try {
+        const data = await api('/api/auth/me');
+        me = data.user;
+        localStorage.setItem('kyro_user', JSON.stringify(me));
+        if (me.role !== 'admin') location.href = 'kyro-app.html';
+      } catch (err) {
+        if (!me || me.role !== 'admin') location.href = 'kyro-chat.html';
+      }
+    }
+
+    async function loadUsers(target) {
+      const box = document.getElementById(target);
+      box.innerHTML = '<p class="note">Loading...</p>';
+      try {
+        const data = await api('/api/admin/users');
+        const rows = (data.users || []).map(u => {
+          const full = (u.firstName + ' ' + u.lastName).trim();
+          if (target === 'users') {
+            return `<tr>
+              <td>${full}<br><span class="note">${u.email}</span></td>
+              <td>${u.role}</td>
+              <td>${u.suspended ? 'Suspended' : u.banned ? 'Banned' : 'Active'}</td>
+              <td>
+                ${u.role === 'admin'
+                  ? `<button class="btn ghost" onclick="setUser('${u.id}',{role:'user'})">Make user</button>`
+                  : `<button class="btn ok" onclick="setUser('${u.id}',{role:'admin'})">Make admin</button>`}
+              </td>
+            </tr>`;
+          }
+          return `<tr>
+            <td>${full}<br><span class="note">${u.email}</span></td>
+            <td>${u.suspended ? 'Suspended' : u.banned ? 'Banned' : 'Active'}</td>
+            <td>
+              <button class="btn warn" onclick="setUser('${u.id}',{suspended:${u.suspended ? 'false' : 'true'}})">${u.suspended ? 'Unsuspend' : 'Suspend'}</button>
+              <button class="btn bad" onclick="setUser('${u.id}',{banned:${u.banned ? 'false' : 'true'}})">${u.banned ? 'Unban' : 'Ban'}</button>
+            </td>
+          </tr>`;
+        }).join('');
+        box.innerHTML = `<table><thead><tr><th>Account</th><th>${target === 'users' ? 'Role' : 'Status'}</th><th>${target === 'users' ? 'Status' : 'Actions'}</th>${target === 'users' ? '<th>Admin</th>' : ''}</tr></thead><tbody>${rows || '<tr><td>No users yet</td></tr>'}</tbody></table>`;
+      } catch (err) {
+        box.innerHTML = `<p class="note">${err.message}. Add the admin routes on Render, then refresh.</p>`;
+      }
+    }
+
+    async function setUser(id, body) {
+      try {
+        await api('/api/admin/users/' + id, { method: 'PATCH', body: JSON.stringify(body) });
+        const open = document.querySelector('.panel.active');
+        if (open) loadUsers(open.id);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function loadView() {
+      const box = document.getElementById('view');
+      try {
+        const d = await api('/api/admin/overview');
+        box.innerHTML = `<h2>View</h2>
+          <p>Total accounts: <b>${d.total}</b></p>
+          <p>Normal users: <b>${d.users}</b></p>
+          <p>Admins: <b>${d.admins}</b></p>
+          <p>Suspended: <b>${d.suspended}</b></p>
+          <p>Banned: <b>${d.banned}</b></p>`;
+      } catch (err) {
+        box.innerHTML = `<p class="note">${err.message}</p>`;
+      }
+    }
+
+    async function loadMessage() {
+      const box = document.getElementById('message');
+      let options = '<option value="">All users</option>';
+      try {
+        const data = await api('/api/admin/users');
+        options += (data.users || []).map(u => `<option value="${u.id}">${u.firstName} ${u.lastName} (${u.email})</option>`).join('');
+      } catch (e) {}
+      box.innerHTML = `<h2>Message users</h2>
+        <label>Send to</label>
+        <select id="msgTo">${options}</select>
+        <label>Message</label>
+        <textarea id="msgText" rows="4" placeholder="Write the note"></textarea>
+        <button class="btn ok" onclick="sendMsg()">Send</button>
+        <div id="msgOut" class="note"></div>`;
+    }
+
+    async function sendMsg() {
+      const out = document.getElementById('msgOut');
+      try {
+        await api('/api/admin/message', {
+          method: 'POST',
+          body: JSON.stringify({
+            userId: document.getElementById('msgTo').value || null,
+            text: document.getElementById('msgText').value
+          })
+        });
+        out.textContent = 'Message saved.';
+        document.getElementById('msgText').value = '';
+      } catch (err) {
+        out.textContent = err.message;
+      }
+    }
+
+    boot();
+  </script>
+</body>
+</html>
