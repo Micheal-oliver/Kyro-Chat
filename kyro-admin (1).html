@@ -71,7 +71,7 @@
     let me = null;
     try { me = JSON.parse(localStorage.getItem('kyro_user') || 'null'); } catch (e) {}
 
-    if (!token) location.href = 'kyro-chat.html';
+    if (!token) location.href = 'index.html';
 
     async function api(path, options = {}) {
       const res = await fetch(API_BASE + path, Object.assign({}, options, {
