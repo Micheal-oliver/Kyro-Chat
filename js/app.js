@@ -150,10 +150,19 @@ document.getElementById("composer").addEventListener("submit", async (e) => {
   if (messagesEl.querySelector(".side-hint")) messagesEl.innerHTML = "";
   messagesEl.appendChild(bubble);
   messagesEl.scrollTop = messagesEl.scrollHeight;
-  const data = await Kyro.api.sendMessage(currentPeer.id, text);
-  if (!data._ok) {
-    bubble.style.opacity = "0.55";
-    searchHint.textContent = data.message || "Message may not have sent.";
+  if (window.kyroSocket && window.kyroSocket.connected) {
+    window.kyroSocket.emit("send-message", { receiverId: currentPeer.id, text }, (res) => {
+      if (res && res.ok === false) {
+        bubble.style.opacity = "0.55";
+        searchHint.textContent = res.message || "Message may not have sent.";
+      }
+    });
+  } else {
+    const data = await Kyro.api.sendMessage(currentPeer.id, text);
+    if (!data._ok) {
+      bubble.style.opacity = "0.55";
+      searchHint.textContent = data.message || "Message may not have sent.";
+    }
   }
 });
 
@@ -207,4 +216,33 @@ document.getElementById("searchInput").addEventListener("keydown", (e) => {
     }
   } catch (_) {}
   await loadChats();
+  connectSocket();
 })();
+
+function connectSocket() {
+  if (typeof io !== "function") return;
+  const token = Kyro.getToken();
+  if (!token || token === "session") return;
+  const socket = io(Kyro.API_BASE, {
+    auth: { token },
+    transports: ["websocket", "polling"]
+  });
+  window.kyroSocket = socket;
+  socket.on("new-message", (msg) => {
+    const from = String(msg.senderId || "");
+    const to = String(msg.receiverId || "");
+    const mine = from === String(meId);
+    const peerId = currentPeer && String(currentPeer.id);
+    const inThisThread = peerId && (from === peerId || to === peerId);
+    if (inThisThread) {
+      if (messagesEl.querySelector(".side-hint")) messagesEl.innerHTML = "";
+      if (mine) return;
+      const bubble = document.createElement("div");
+      bubble.className = "bubble them";
+      bubble.textContent = msg.text || msg.content || "";
+      messagesEl.appendChild(bubble);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+    loadChats();
+  });
+}
