@@ -7,7 +7,9 @@ Animated introductory slideshow for Kyro Chat (HTML, CSS, vanilla JS).
 - `index.html` — 7-slide welcome experience
 - `styles.css` — dark theme, transitions, responsive layout
 - `app.js` — auto-advance, dots, swipe, keyboard, skip
-- `signup.html` / `login.html` — starter auth screens (wire to your API)
+- `signup.html` / `login.html` — working auth (OTP + profile photo)
+- `app.html` — main chat screen after login
+- `js/kyro.js` — API client for `https://chat-backend-tnii.onrender.com`
 - `images/` — generated illustrations
 
 ## Slides
@@ -27,6 +29,18 @@ Animated introductory slideshow for Kyro Chat (HTML, CSS, vanilla JS).
 - Last slide stops auto-play and shows the two buttons
 - Skip jumps straight to the join screen
 - Buttons go to `signup.html` and `login.html`
+- If a session already exists, welcome is skipped and `app.html` opens
+- Logout clears the session and returns to login (next login asks for OTP)
+
+## Auth + backend
+
+Backend: `https://chat-backend-tnii.onrender.com`
+
+- Register: `POST /api/auth/register` with `firstName`, `lastName`, `email`, `password`, `phone`
+- OTP: `POST /api/auth/verify-otp` `{ email, otp }` and `POST /api/auth/resend-otp` `{ email }`
+- Login: `POST /api/auth/login` `{ email, password }`
+- Session: `GET /api/auth/me` with `Authorization: Bearer <token>`
+- Chat: `GET /api/chats`, `GET /api/users/lookup`, `GET /api/messages/:id`, `POST /api/messages`
 
 ## Preview locally
 

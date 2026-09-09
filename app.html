@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kyro Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body class="app-body">
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <header class="side-head">
+        <div class="me">
+          <div class="me-avatar" id="meAvatar">K</div>
+          <div>
+            <strong id="meName">Kyro</strong>
+            <small id="meEmail">signed in</small>
+          </div>
+        </div>
+        <button class="icon-btn" id="logoutBtn" type="button" title="Log out">Logout</button>
+      </header>
+
+      <div class="search-wrap">
+        <input id="searchInput" type="search" placeholder="Search or start chat by email / phone" />
+        <button class="icon-btn" id="searchBtn" type="button">Find</button>
+      </div>
+      <p class="side-hint" id="searchHint"></p>
+      <div class="chat-list" id="chatList"></div>
+    </aside>
+
+    <section class="thread">
+      <div class="empty-thread" id="emptyThread">
+        <img src="images/logo.jpg" alt="" />
+        <h2>Kyro Chat</h2>
+        <p>Select a conversation or search for a friend to start messaging.</p>
+      </div>
+
+      <div class="thread-on" id="threadOn" hidden>
+        <header class="thread-head">
+          <button class="icon-btn back-chat" id="backChat" type="button">←</button>
+          <div class="peer-avatar" id="peerAvatar">F</div>
+          <div>
+            <strong id="peerName">Friend</strong>
+            <small id="peerMeta">Kyro chat</small>
+          </div>
+        </header>
+        <div class="messages" id="messages"></div>
+        <form class="composer" id="composer">
+          <input id="messageInput" autocomplete="off" placeholder="Type a message" />
+          <button class="btn btn-primary send-btn" type="submit">Send</button>
+        </form>
+      </div>
+    </section>
+  </div>
+  <script src="js/kyro.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
