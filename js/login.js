@@ -38,6 +38,10 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
       Kyro.setSession(Kyro.extractToken(data), Kyro.extractUser(data));
       const resent = await Kyro.api.resendOtp(pending.email);
       if (resent._ok || resent.needsVerification || /sent|code|otp/i.test(resent.message || "")) {
+        if (resent.otp) {
+          document.getElementById("otp").value = resent.otp;
+          document.getElementById("otpError").textContent = "Email is not set up yet. Your code is " + resent.otp;
+        }
         showOtp();
         return;
       }
@@ -46,6 +50,10 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     }
 
     if (needsOtp || data._ok) {
+      if (data.otp) {
+        document.getElementById("otp").value = data.otp;
+        document.getElementById("otpError").textContent = "Email is not set up yet. Your code is " + data.otp;
+      }
       showOtp();
       return;
     }
@@ -98,6 +106,8 @@ document.getElementById("verifyBtn").addEventListener("click", async () => {
 
 document.getElementById("resendBtn").addEventListener("click", async () => {
   const data = await Kyro.api.resendOtp(pending.email);
-  document.getElementById("otpError").textContent =
-    data.message || (data._ok ? "A new code is on the way." : "Could not resend OTP.");
+  document.getElementById("otpError").textContent = data.otp
+    ? "Your code is " + data.otp
+    : (data.message || (data._ok ? "A new code is on the way." : "Could not resend OTP."));
+  if (data.otp) document.getElementById("otp").value = data.otp;
 });

@@ -79,6 +79,10 @@ document.getElementById("signupForm").addEventListener("submit", async (e) => {
     });
     if (data.needsVerification || data._ok || data._status === 200 || data._status === 201) {
       document.getElementById("otpEmail").textContent = email;
+      if (data.otp) {
+        document.getElementById("otp").value = data.otp;
+        setError("otpError", "Email is not set up yet. Your code is " + data.otp);
+      }
       show("otp");
       const token = Kyro.extractToken(data);
       if (token) Kyro.setSession(token, Kyro.extractUser(data));
@@ -129,7 +133,12 @@ document.getElementById("verifyBtn").addEventListener("click", async () => {
 document.getElementById("resendBtn").addEventListener("click", async () => {
   setError("otpError", "");
   const data = await Kyro.api.resendOtp(pending.email);
-  setError("otpError", data.message || (data._ok ? "A new code is on the way." : "Could not resend code."));
+  if (data.otp) {
+    document.getElementById("otp").value = data.otp;
+    setError("otpError", "Your code is " + data.otp);
+  } else {
+    setError("otpError", data.message || (data._ok ? "A new code is on the way." : "Could not resend code."));
+  }
 });
 
 document.getElementById("photo").addEventListener("change", async (e) => {

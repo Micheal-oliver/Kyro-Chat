@@ -9,19 +9,30 @@
     const auth = token || getToken();
     if (auth) headers.Authorization = "Bearer " + auth;
 
-    const res = await fetch(API_BASE + path, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined
-    });
-
-    const raw = await res.text();
-    let data = {};
-    try { data = raw ? JSON.parse(raw) : {}; } catch { data = { message: raw }; }
-
-    data._ok = res.ok;
-    data._status = res.status;
-    return data;
+    let lastErr;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const res = await fetch(API_BASE + path, {
+          method,
+          headers,
+          body: body !== undefined ? JSON.stringify(body) : undefined
+        });
+        const raw = await res.text();
+        let data = {};
+        try { data = raw ? JSON.parse(raw) : {}; } catch { data = { message: raw }; }
+        data._ok = res.ok;
+        data._status = res.status;
+        return data;
+      } catch (err) {
+        lastErr = err;
+        if (attempt === 1) await new Promise((r) => setTimeout(r, 2500));
+      }
+    }
+    return {
+      _ok: false,
+      _status: 0,
+      message: "Failed to reach the server. Wait 30 seconds and try again — Render may be waking up."
+    };
   }
 
   function getToken() {
