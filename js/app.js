@@ -401,6 +401,13 @@ function connectSocket() {
   });
 }
 
+function hideKyroLoader() {
+  document.body.classList.remove("is-loading");
+  document.body.classList.add("loader-out");
+  const loader = document.getElementById("kyroLoader");
+  if (loader) setTimeout(() => loader.remove(), 500);
+}
+
 (async () => {
   try {
     const meRes = await Kyro.api.me();
@@ -425,4 +432,7 @@ function connectSocket() {
   renderCalls();
   await loadChats();
   connectSocket();
+  const wait = new Promise((r) => setTimeout(r, 1100));
+  await wait;
+  hideKyroLoader();
 })();
