@@ -1,3 +1,91 @@
+[hidden],
+.is-off {
+  display: none !important;
+}
+
+.kyro-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(155, 109, 255, 0.28), transparent 42%),
+    #070712;
+  text-align: center;
+  transition: opacity 0.45s ease, visibility 0.45s ease;
+}
+
+.kyro-loader h2 {
+  font-family: Outfit, sans-serif;
+  font-size: 28px;
+  background: linear-gradient(90deg, #fff, #3ce7ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.kyro-loader p { color: #a8b0c8; font-size: 14px; }
+
+.loader-logo {
+  width: 78px;
+  height: 78px;
+  border-radius: 22px;
+  object-fit: cover;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 30px rgba(60, 231, 255, 0.35);
+  animation: logoPulse 1.6s ease-in-out infinite;
+}
+
+.loader-rings {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+}
+
+.loader-rings span {
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-top-color: #3ce7ff;
+  border-radius: 50%;
+  animation: spin 1.2s linear infinite;
+}
+
+.loader-rings span:nth-child(2) {
+  inset: 12px;
+  border-top-color: #9b6dff;
+  animation-duration: 1.6s;
+  animation-direction: reverse;
+}
+
+.loader-rings span:nth-child(3) {
+  inset: 24px;
+  border-top-color: #ff6bd6;
+  animation-duration: 2s;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+body.app-body.is-loading .wa-app,
+body.app-body.is-loading .thread-screen,
+body.app-body.is-loading .modal {
+  visibility: hidden;
+}
+
+body.app-body.loader-out .kyro-loader {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 html, body.app-body {
   height: 100%;
   overflow: hidden;
