@@ -202,8 +202,16 @@ document.getElementById("composer").addEventListener("submit", async (e) => {
   }
 });
 
-function openModal(id) { document.getElementById(id).hidden = false; }
-function closeModal(id) { document.getElementById(id).hidden = true; }
+function openModal(id) {
+  const el = document.getElementById(id);
+  el.hidden = false;
+  el.classList.remove("is-off");
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  el.hidden = true;
+  el.classList.add("is-off");
+}
 
 document.getElementById("plusBtn").addEventListener("click", () => openModal("plusModal"));
 document.getElementById("emptyPlus").addEventListener("click", () => openModal("plusModal"));
@@ -402,6 +410,9 @@ function connectSocket() {
 }
 
 function hideKyroLoader() {
+  ["plusModal", "contactModal", "groupModal", "callModal"].forEach(closeModal);
+  document.getElementById("threadScreen").hidden = true;
+  showTab("chats");
   document.body.classList.remove("is-loading");
   document.body.classList.add("loader-out");
   const loader = document.getElementById("kyroLoader");
