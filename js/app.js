@@ -5,7 +5,8 @@ const LS = {
   groups: "kyro.groups",
   stories: "kyro.stories",
   communities: "kyro.communities",
-  calls: "kyro.calls"
+  calls: "kyro.calls",
+  unread: "kyro.unread"
 };
 
 let me = Kyro.getUser() || {};
@@ -14,6 +15,44 @@ let meId = String(me._id || me.id || me.userId || "");
 let isAdmin = me.role === "admin";
 let chats = [];
 let currentPeer = null;
+const seenMessages = new Set();
+
+function unreadMap() {
+  const raw = load(LS.unread, {});
+  return raw && typeof raw === "object" ? raw : {};
+}
+function unreadCount(id) {
+  return Number(unreadMap()[String(id)] || 0);
+}
+function setUnread(id, count) {
+  const map = unreadMap();
+  if (count <= 0) delete map[String(id)];
+  else map[String(id)] = count;
+  save(LS.unread, map);
+  paintChatBadge();
+}
+function clearUnread(id) {
+  setUnread(id, 0);
+}
+function addUnread(id) {
+  setUnread(id, unreadCount(id) + 1);
+}
+function totalUnread() {
+  return Object.values(unreadMap()).reduce((sum, n) => sum + Number(n || 0), 0);
+}
+function paintChatBadge() {
+  const tab = document.querySelector('.tab[data-go="chats"]');
+  if (!tab) return;
+  let badge = tab.querySelector(".nav-badge");
+  const total = totalUnread();
+  if (!badge) {
+    badge = document.createElement("i");
+    badge.className = "nav-badge";
+    tab.appendChild(badge);
+  }
+  badge.textContent = total > 99 ? "99+" : String(total);
+  badge.hidden = total <= 0;
+}
 
 function load(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
@@ -80,7 +119,8 @@ function peerFrom(item) {
     email: other.email || "",
     phone: other.phone || other.phoneNumber || "",
     avatar: other.avatar || other.profilePicture || "",
-    preview: (item.lastMessage && (item.lastMessage.text || item.lastMessage.content)) || item.preview || "Tap to chat"
+    preview: (item.lastMessage && (item.lastMessage.text || item.lastMessage.content)) || item.preview || "Tap to chat",
+    unread: unreadCount(other._id || other.id || item.otherUserId || item.id)
   };
 }
 
@@ -91,7 +131,15 @@ function contactRow(peer, extra) {
     '<div class="row-avatar"></div><div class="grow"><b></b><span></span></div><div class="row-actions"></div>';
   setAvatar(row.querySelector(".row-avatar"), peer.avatar, peer.name);
   row.querySelector("b").textContent = peer.name;
-  row.querySelector("span").textContent = extra || peer.email || peer.phone || peer.preview || "";
+  row.querySelector("span").textContent = extra || peer.preview || peer.email || peer.phone || "";
+  const count = unreadCount(peer.id);
+  if (count > 0) {
+    row.classList.add("has-unread");
+    const badge = document.createElement("em");
+    badge.className = "unread-badge";
+    badge.textContent = count > 99 ? "99+" : String(count);
+    row.querySelector(".grow").appendChild(badge);
+  }
   const actions = row.querySelector(".row-actions");
   const msg = document.createElement("button");
   msg.className = "mini";
@@ -127,7 +175,11 @@ function renderChats(items) {
     row.addEventListener("click", () => openThread({ id: "group:" + g.id, name: g.name, preview: "Group chat" }));
     box.appendChild(row);
   });
+  const seen = new Set(items.map((item) => String(peerFrom(item).id)));
   items.forEach((item) => box.appendChild(contactRow(peerFrom(item))));
+  load(LS.contacts, []).forEach((c) => {
+    if (c.id && !seen.has(String(c.id))) box.appendChild(contactRow(c));
+  });
 }
 
 async function loadChats() {
@@ -138,6 +190,7 @@ async function loadChats() {
 
 function openThread(peer) {
   currentPeer = peer;
+  clearUnread(peer.id);
   document.getElementById("threadScreen").hidden = false;
   document.getElementById("peerName").textContent = peer.name;
   document.getElementById("peerMeta").textContent = peer.email || peer.phone || "Kyro chat";
@@ -172,6 +225,8 @@ async function loadMessages() {
     const text = m.text || m.content || m.message || "";
     const from = String(m.senderId || m.from || "");
     const mine = from === meId || m.mine === true;
+    const mid = String(m._id || "");
+    if (mid) seenMessages.add(mid);
     const bubble = document.createElement("div");
     bubble.className = "bubble " + (mine ? "me" : "them");
     bubble.textContent = text;
@@ -388,25 +443,63 @@ document.getElementById("loadUsersBtn").addEventListener("click", async () => {
   });
 });
 
+function upsertChatPreview(peerId, text) {
+  const idx = chats.findIndex((c) => String(peerFrom(c).id) === String(peerId));
+  if (idx >= 0) {
+    const item = chats.splice(idx, 1)[0];
+    item.lastMessage = { text };
+    item.preview = text;
+    chats.unshift(item);
+    return;
+  }
+  const contact = load(LS.contacts, []).find((c) => String(c.id) === String(peerId));
+  chats.unshift(contact ? { user: contact, lastMessage: { text } } : {
+    id: peerId,
+    name: "Kyro user",
+    lastMessage: { text }
+  });
+}
+
+function applyIncoming(msg) {
+  const mid = String(msg._id || "");
+  if (mid && seenMessages.has(mid)) return;
+  if (mid) seenMessages.add(mid);
+
+  const from = String(msg.senderId || msg.from || "");
+  const to = String(msg.receiverId || msg.to || "");
+  const mine = from === meId;
+  const peerId = mine ? to : from;
+  const text = msg.text || msg.content || msg.message || "";
+  if (!peerId || !text) return;
+
+  const open = currentPeer && String(currentPeer.id) === String(peerId);
+  if (open) {
+    const box = document.getElementById("messages");
+    if (box.querySelector(".hint")) box.innerHTML = "";
+    if (!mine) {
+      const bubble = document.createElement("div");
+      bubble.className = "bubble them";
+      bubble.textContent = text;
+      box.appendChild(bubble);
+      box.scrollTop = box.scrollHeight;
+    }
+    clearUnread(peerId);
+  } else if (!mine) {
+    addUnread(peerId);
+  }
+
+  upsertChatPreview(peerId, text);
+  renderChats(chats);
+}
+
 function connectSocket() {
   if (typeof io !== "function") return;
   const token = Kyro.getToken();
   if (!token || token === "session") return;
   const socket = io(Kyro.API_BASE, { auth: { token }, transports: ["websocket", "polling"] });
   window.kyroSocket = socket;
-  socket.on("new-message", (msg) => {
-    const from = String(msg.senderId || "");
-    if (currentPeer && from === String(currentPeer.id)) {
-      const box = document.getElementById("messages");
-      if (box.querySelector(".hint")) box.innerHTML = "";
-      const bubble = document.createElement("div");
-      bubble.className = "bubble them";
-      bubble.textContent = msg.text || msg.content || "";
-      box.appendChild(bubble);
-      box.scrollTop = box.scrollHeight;
-    }
-    loadChats();
-  });
+  socket.on("new-message", applyIncoming);
+  socket.on("chat-updated", applyIncoming);
 }
 
 function hideKyroLoader() {
@@ -442,6 +535,7 @@ function hideKyroLoader() {
   renderCommunities();
   renderCalls();
   await loadChats();
+  paintChatBadge();
   connectSocket();
   const wait = new Promise((r) => setTimeout(r, 1100));
   await wait;
