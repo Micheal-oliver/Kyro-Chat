@@ -143,10 +143,15 @@
 
   <div class="modal is-off" id="callModal" hidden>
     <div class="sheet call-sheet">
+      <audio id="remoteAudio" autoplay playsinline></audio>
       <div class="peer-avatar lg" id="callAvatar">C</div>
-      <h3 id="callName">Calling…</h3>
-      <p>Voice call</p>
-      <button class="end-call" id="endCall" type="button">End</button>
+      <h3 id="callName">Voice call</h3>
+      <p id="callStatus">Connecting with WebRTC…</p>
+      <div class="call-actions">
+        <button class="sheet-btn" id="acceptCall" type="button" hidden>Accept</button>
+        <button class="sheet-btn ghost" id="rejectCall" type="button" hidden>Decline</button>
+        <button class="end-call" id="endCall" type="button">End</button>
+      </div>
     </div>
   </div>
 
