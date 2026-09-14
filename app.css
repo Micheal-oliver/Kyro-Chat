@@ -234,9 +234,31 @@ html, body.app-body {
 }
 
 .row b { display: block; font-size: 15px; }
+.row.has-unread b { font-weight: 800; }
 .row span, .hint { color: var(--muted, #a8b0c8); font-size: 13px; }
-.grow { flex: 1; min-width: 0; }
+.grow { flex: 1; min-width: 0; position: relative; }
 .row-actions { margin-left: auto; display: flex; gap: 6px; }
+.unread-badge, .nav-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #3ce7ff;
+  color: #070712;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  display: inline-grid;
+  place-items: center;
+  margin-left: 8px;
+}
+.tab { position: relative; }
+.nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 16%;
+  margin: 0;
+}
 
 .icon-round, .mini {
   width: 38px;
