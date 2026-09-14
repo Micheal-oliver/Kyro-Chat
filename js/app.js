@@ -351,19 +351,169 @@ document.getElementById("searchInput").addEventListener("keydown", async (e) => 
   renderSearchResults(found);
 });
 
-function startCall(peer) {
+const ICE_SERVERS = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+let callPeer = null;
+let callRole = "";
+let peerConnection = null;
+let localStream = null;
+let incomingOffer = null;
+
+function logCall(name, note) {
   const calls = load(LS.calls, []);
-  calls.unshift({ name: peer.name, at: new Date().toISOString() });
+  calls.unshift({ name, at: new Date().toISOString(), note });
   save(LS.calls, calls);
-  document.getElementById("callName").textContent = "Calling " + peer.name;
-  setAvatar(document.getElementById("callAvatar"), peer.avatar, peer.name);
-  openModal("callModal");
   renderCalls();
 }
+
+function setCallUi({ name, avatar, status, incoming }) {
+  document.getElementById("callName").textContent = name || "Voice call";
+  document.getElementById("callStatus").textContent = status || "";
+  setAvatar(document.getElementById("callAvatar"), avatar || "", name || "C");
+  document.getElementById("acceptCall").hidden = !incoming;
+  document.getElementById("rejectCall").hidden = !incoming;
+  document.getElementById("endCall").hidden = Boolean(incoming);
+  openModal("callModal");
+}
+
+async function getMic() {
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  return localStream;
+}
+
+function attachRemoteAudio(stream) {
+  const audio = document.getElementById("remoteAudio");
+  audio.srcObject = stream;
+  audio.play().catch(() => {});
+}
+
+async function makePeerConnection(peerId) {
+  peerConnection = new RTCPeerConnection(ICE_SERVERS);
+  if (localStream) {
+    localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
+  }
+  peerConnection.ontrack = (event) => {
+    attachRemoteAudio(event.streams[0]);
+    document.getElementById("callStatus").textContent = "Connected";
+  };
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate && window.kyroSocket) {
+      window.kyroSocket.emit("webrtc-ice", { to: peerId, candidate: event.candidate });
+    }
+  };
+  return peerConnection;
+}
+
+async function hangUp(notify) {
+  const peerId = callPeer && callPeer.id;
+  if (notify && peerId && window.kyroSocket) window.kyroSocket.emit("call-end", { to: peerId });
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+  if (localStream) {
+    localStream.getTracks().forEach((track) => track.stop());
+    localStream = null;
+  }
+  incomingOffer = null;
+  callPeer = null;
+  callRole = "";
+  const audio = document.getElementById("remoteAudio");
+  audio.srcObject = null;
+  closeModal("callModal");
+}
+
+async function startCall(peer) {
+  if (!window.kyroSocket || !window.kyroSocket.connected) {
+    document.getElementById("callStatus").textContent = "Socket is not connected.";
+    setCallUi({ name: peer.name, avatar: peer.avatar, status: "Cannot call until chat socket is online." });
+    return;
+  }
+  callPeer = peer;
+  callRole = "caller";
+  logCall(peer.name, "Outgoing");
+  setCallUi({ name: peer.name, avatar: peer.avatar, status: "Calling…", incoming: false });
+  try {
+    await getMic();
+    await makePeerConnection(peer.id);
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    window.kyroSocket.emit("call-user", { to: peer.id, name: meName });
+    window.kyroSocket.emit("webrtc-offer", { to: peer.id, sdp: offer });
+  } catch (err) {
+    document.getElementById("callStatus").textContent = err.message || "Microphone permission is needed.";
+  }
+}
+
 document.getElementById("threadCall").addEventListener("click", () => {
   if (currentPeer) startCall(currentPeer);
 });
-document.getElementById("endCall").addEventListener("click", () => closeModal("callModal"));
+document.getElementById("endCall").addEventListener("click", () => hangUp(true));
+document.getElementById("rejectCall").addEventListener("click", () => {
+  if (callPeer && window.kyroSocket) window.kyroSocket.emit("call-reject", { to: callPeer.id });
+  hangUp(false);
+});
+document.getElementById("acceptCall").addEventListener("click", async () => {
+  if (!callPeer || !incomingOffer) return;
+  try {
+    await getMic();
+    await makePeerConnection(callPeer.id);
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+    window.kyroSocket.emit("call-accept", { to: callPeer.id });
+    window.kyroSocket.emit("webrtc-answer", { to: callPeer.id, sdp: answer });
+    document.getElementById("acceptCall").hidden = true;
+    document.getElementById("rejectCall").hidden = true;
+    document.getElementById("endCall").hidden = false;
+    document.getElementById("callStatus").textContent = "Connecting…";
+  } catch (err) {
+    document.getElementById("callStatus").textContent = err.message || "Could not accept call.";
+  }
+});
+
+function bindCallSocket(socket) {
+  socket.on("incoming-call", (data) => {
+    callPeer = {
+      id: data.from,
+      name: data.fromName || data.name || "Kyro user",
+      avatar: data.fromAvatar || ""
+    };
+    callRole = "callee";
+    logCall(callPeer.name, "Incoming");
+    setCallUi({
+      name: callPeer.name,
+      avatar: callPeer.avatar,
+      status: "Incoming voice call",
+      incoming: true
+    });
+  });
+  socket.on("webrtc-offer", async (data) => {
+    incomingOffer = data.sdp;
+    if (!callPeer) {
+      callPeer = { id: data.from, name: data.fromName || "Kyro user", avatar: data.fromAvatar || "" };
+    }
+  });
+  socket.on("call-accepted", () => {
+    document.getElementById("callStatus").textContent = "Accepted. Connecting…";
+  });
+  socket.on("webrtc-answer", async (data) => {
+    if (!peerConnection || !data.sdp) return;
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+    document.getElementById("callStatus").textContent = "Connected";
+  });
+  socket.on("webrtc-ice", async (data) => {
+    if (!peerConnection || !data.candidate) return;
+    try { await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (_) {}
+  });
+  socket.on("call-rejected", () => {
+    document.getElementById("callStatus").textContent = "Call declined";
+    setTimeout(() => hangUp(false), 800);
+  });
+  socket.on("call-ended", () => hangUp(false));
+  socket.on("call-unavailable", () => {
+    document.getElementById("callStatus").textContent = "This person is not online.";
+  });
+}
 
 function renderCalls() {
   const box = document.getElementById("callList");
@@ -500,6 +650,7 @@ function connectSocket() {
   window.kyroSocket = socket;
   socket.on("new-message", applyIncoming);
   socket.on("chat-updated", applyIncoming);
+  bindCallSocket(socket);
 }
 
 function hideKyroLoader() {
