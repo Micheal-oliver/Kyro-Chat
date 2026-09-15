@@ -447,6 +447,53 @@ html, body.app-body {
   border-radius: 22px 22px 0 0;
   padding: 18px 16px 24px;
   animation: sheetUp 0.32s ease;
+  position: relative;
+}
+
+.sheet.tall, .call-sheet.tall {
+  min-height: 78dvh;
+}
+
+.call-sheet.tall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.sheet-x {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.28);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.story-types {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.story-type.is-on {
+  border-color: #3ce7ff;
+  color: #3ce7ff;
+}
+
+.story-thumb {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  object-fit: cover;
 }
 
 @keyframes sheetUp {

@@ -142,7 +142,8 @@
   </div>
 
   <div class="modal is-off" id="callModal" hidden>
-    <div class="sheet call-sheet">
+    <div class="sheet call-sheet tall">
+      <button class="sheet-x" id="closeCallSheet" type="button" aria-label="Close">×</button>
       <audio id="remoteAudio" autoplay playsinline></audio>
       <div class="peer-avatar lg" id="callAvatar">C</div>
       <h3 id="callName">Voice call</h3>
@@ -153,6 +154,33 @@
         <button class="end-call" id="endCall" type="button">End</button>
       </div>
     </div>
+  </div>
+
+  <div class="modal is-off" id="storyModal" hidden>
+    <form class="sheet tall" id="storyForm">
+      <button class="sheet-x" id="closeStory" type="button" aria-label="Close">×</button>
+      <h3>New story</h3>
+      <div class="story-types">
+        <button type="button" class="sheet-btn story-type is-on" data-type="text">Text</button>
+        <button type="button" class="sheet-btn story-type" data-type="image">Image</button>
+        <button type="button" class="sheet-btn story-type" data-type="music">Music</button>
+      </div>
+      <div id="storyTextBox">
+        <label>Text</label>
+        <input id="storyText" placeholder="Write something" />
+      </div>
+      <div id="storyImageBox" hidden>
+        <label>Photo</label>
+        <input id="storyImage" type="file" accept="image/*" />
+      </div>
+      <div id="storyMusicBox" hidden>
+        <label>Music</label>
+        <input id="storyMusic" type="file" accept="audio/*" />
+        <label>Cover text</label>
+        <input id="storyMusicTitle" placeholder="Song name" />
+      </div>
+      <button class="btn btn-primary" type="submit" style="width:100%">Share story</button>
+    </form>
   </div>
 
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
