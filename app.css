@@ -597,3 +597,18 @@ html, body.app-body {
 @media (min-width: 860px) {
   .wa-app, .thread-screen { max-width: 900px; }
 }
+
+
+.msg-toast {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  top: 14px;
+  z-index: 60;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  background: rgba(16,16,36,0.96);
+  color: #f4f6ff;
+  padding: 12px 14px;
+  text-align: left;
+}
