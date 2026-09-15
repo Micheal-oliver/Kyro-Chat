@@ -16,6 +16,43 @@ let isAdmin = me.role === "admin";
 let chats = [];
 let currentPeer = null;
 const seenMessages = new Set();
+const onlineIds = new Set();
+const lastSeenMap = {};
+
+function formatLastSeen(value) {
+  if (!value) return "last seen recently";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "last seen recently";
+  const diff = Date.now() - date.getTime();
+  if (diff < 60 * 1000) return "last seen just now";
+  if (diff < 60 * 60 * 1000) return "last seen " + Math.floor(diff / 60000) + " min ago";
+  const sameDay = new Date().toDateString() === date.toDateString();
+  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (sameDay) return "last seen today at " + time;
+  return "last seen " + date.toLocaleDateString() + " at " + time;
+}
+
+function presenceText(id, fallbackSeen) {
+  if (onlineIds.has(String(id))) return "online";
+  return formatLastSeen(lastSeenMap[String(id)] || fallbackSeen);
+}
+
+function rememberSeen(id, value) {
+  if (!id || !value) return;
+  lastSeenMap[String(id)] = value;
+}
+
+function refreshPresenceUi() {
+  if (currentPeer) {
+    document.getElementById("peerMeta").textContent = presenceText(currentPeer.id, currentPeer.lastSeen);
+  }
+  document.querySelectorAll(".row[data-peer]").forEach((row) => {
+    const id = row.dataset.peer;
+    const line = row.querySelector(".presence");
+    if (line) line.textContent = presenceText(id);
+    row.classList.toggle("is-online", onlineIds.has(id));
+  });
+}
 
 function unreadMap() {
   const raw = load(LS.unread, {});
@@ -120,6 +157,7 @@ function peerFrom(item) {
     phone: other.phone || other.phoneNumber || "",
     avatar: other.avatar || other.profilePicture || "",
     preview: (item.lastMessage && (item.lastMessage.text || item.lastMessage.content)) || item.preview || "Tap to chat",
+    lastSeen: other.lastSeen || item.lastSeen || "",
     unread: unreadCount(other._id || other.id || item.otherUserId || item.id)
   };
 }
@@ -127,11 +165,15 @@ function peerFrom(item) {
 function contactRow(peer, extra) {
   const row = document.createElement("div");
   row.className = "row";
+  row.dataset.peer = String(peer.id);
+  if (onlineIds.has(String(peer.id))) row.classList.add("is-online");
+  if (peer.lastSeen) rememberSeen(peer.id, peer.lastSeen);
   row.innerHTML =
-    '<div class="row-avatar"></div><div class="grow"><b></b><span></span></div><div class="row-actions"></div>';
+    '<div class="row-avatar"><i class="online-dot"></i></div><div class="grow"><b></b><span></span><small class="presence"></small></div><div class="row-actions"></div>';
   setAvatar(row.querySelector(".row-avatar"), peer.avatar, peer.name);
   row.querySelector("b").textContent = peer.name;
   row.querySelector("span").textContent = extra || peer.preview || peer.email || peer.phone || "";
+  row.querySelector(".presence").textContent = presenceText(peer.id, peer.lastSeen);
   const count = unreadCount(peer.id);
   if (count > 0) {
     row.classList.add("has-unread");
@@ -193,7 +235,7 @@ function openThread(peer) {
   clearUnread(peer.id);
   document.getElementById("threadScreen").hidden = false;
   document.getElementById("peerName").textContent = peer.name;
-  document.getElementById("peerMeta").textContent = peer.email || peer.phone || "Kyro chat";
+  document.getElementById("peerMeta").textContent = presenceText(peer.id, peer.lastSeen);
   setAvatar(document.getElementById("peerAvatar"), peer.avatar, peer.name);
   loadMessages();
 }
@@ -450,10 +492,10 @@ function playRingtone() {
   const ding = (freq, start, dur) => {
     const o = ctx.createOscillator();
     const g = ctx.createGain();
-    o.type = "sine";
+    o.type = "triangle";
     o.frequency.value = freq;
     g.gain.setValueAtTime(0.0001, start);
-    g.gain.exponentialRampToValueAtTime(0.12, start + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.1, start + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
     o.connect(g);
     g.connect(ctx.destination);
@@ -463,11 +505,11 @@ function playRingtone() {
   const loop = () => {
     if (!ringOn || !ringCtx) return;
     const t = ctx.currentTime;
-    ding(880, t, 0.16);
-    ding(1174, t + 0.16, 0.18);
-    ding(988, t + 0.36, 0.16);
-    ding(784, t + 0.56, 0.22);
-    ringTimer = setTimeout(loop, 1300);
+    ding(440, t, 0.18);
+    ding(554, t, 0.18);
+    ding(659, t + 0.2, 0.18);
+    ding(440, t + 0.42, 0.28);
+    ringTimer = setTimeout(loop, 1600);
   };
   ctx.resume().catch(() => {});
   loop();
@@ -844,6 +886,21 @@ function connectSocket() {
   window.kyroSocket = socket;
   socket.on("new-message", applyIncoming);
   socket.on("chat-updated", applyIncoming);
+  socket.on("presence", (data) => {
+    onlineIds.clear();
+    (data.online || []).forEach((id) => onlineIds.add(String(id)));
+    refreshPresenceUi();
+  });
+  socket.on("user-online", (data) => {
+    onlineIds.add(String(data.userId));
+    if (data.lastSeen) rememberSeen(data.userId, data.lastSeen);
+    refreshPresenceUi();
+  });
+  socket.on("user-offline", (data) => {
+    onlineIds.delete(String(data.userId));
+    rememberSeen(data.userId, data.lastSeen || new Date().toISOString());
+    refreshPresenceUi();
+  });
   bindCallSocket(socket);
 }
 
