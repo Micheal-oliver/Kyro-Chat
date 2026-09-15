@@ -351,12 +351,18 @@ document.getElementById("searchInput").addEventListener("keydown", async (e) => 
   renderSearchResults(found);
 });
 
-const ICE_SERVERS = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" }
+  ]
+};
 let callPeer = null;
 let callRole = "";
 let peerConnection = null;
 let localStream = null;
 let incomingOffer = null;
+let pendingIce = [];
 
 function logCall(name, note) {
   const calls = load(LS.calls, []);
@@ -386,19 +392,36 @@ function attachRemoteAudio(stream) {
   audio.play().catch(() => {});
 }
 
+async function flushIce() {
+  if (!peerConnection || !peerConnection.remoteDescription) return;
+  const queued = pendingIce.splice(0);
+  for (const candidate of queued) {
+    try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (_) {}
+  }
+}
+
 async function makePeerConnection(peerId) {
+  pendingIce = [];
   peerConnection = new RTCPeerConnection(ICE_SERVERS);
   if (localStream) {
     localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
   }
   peerConnection.ontrack = (event) => {
-    attachRemoteAudio(event.streams[0]);
+    attachRemoteAudio(event.streams[0] || new MediaStream(event.track ? [event.track] : []));
     document.getElementById("callStatus").textContent = "Connected";
   };
   peerConnection.onicecandidate = (event) => {
     if (event.candidate && window.kyroSocket) {
       window.kyroSocket.emit("webrtc-ice", { to: peerId, candidate: event.candidate });
     }
+  };
+  peerConnection.onconnectionstatechange = () => {
+    const state = peerConnection && peerConnection.connectionState;
+    if (!state) return;
+    document.getElementById("callStatus").textContent =
+      state === "connected" ? "Connected" :
+      state === "failed" || state === "disconnected" ? "Call failed. Try again." :
+      "Connecting…";
   };
   return peerConnection;
 }
@@ -415,6 +438,7 @@ async function hangUp(notify) {
     localStream = null;
   }
   incomingOffer = null;
+  pendingIce = [];
   callPeer = null;
   callRole = "";
   const audio = document.getElementById("remoteAudio");
@@ -434,11 +458,7 @@ async function startCall(peer) {
   setCallUi({ name: peer.name, avatar: peer.avatar, status: "Calling…", incoming: false });
   try {
     await getMic();
-    await makePeerConnection(peer.id);
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
     window.kyroSocket.emit("call-user", { to: peer.id, name: meName });
-    window.kyroSocket.emit("webrtc-offer", { to: peer.id, sdp: offer });
   } catch (err) {
     document.getElementById("callStatus").textContent = err.message || "Microphone permission is needed.";
   }
@@ -448,28 +468,35 @@ document.getElementById("threadCall").addEventListener("click", () => {
   if (currentPeer) startCall(currentPeer);
 });
 document.getElementById("endCall").addEventListener("click", () => hangUp(true));
+document.getElementById("closeCallSheet").addEventListener("click", () => hangUp(true));
 document.getElementById("rejectCall").addEventListener("click", () => {
   if (callPeer && window.kyroSocket) window.kyroSocket.emit("call-reject", { to: callPeer.id });
   hangUp(false);
 });
 document.getElementById("acceptCall").addEventListener("click", async () => {
-  if (!callPeer || !incomingOffer) return;
+  if (!callPeer) return;
   try {
     await getMic();
-    await makePeerConnection(callPeer.id);
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingOffer));
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
     window.kyroSocket.emit("call-accept", { to: callPeer.id });
-    window.kyroSocket.emit("webrtc-answer", { to: callPeer.id, sdp: answer });
     document.getElementById("acceptCall").hidden = true;
     document.getElementById("rejectCall").hidden = true;
     document.getElementById("endCall").hidden = false;
     document.getElementById("callStatus").textContent = "Connecting…";
+    if (incomingOffer) await answerOffer(incomingOffer);
   } catch (err) {
     document.getElementById("callStatus").textContent = err.message || "Could not accept call.";
   }
 });
+
+async function answerOffer(sdp) {
+  if (!callPeer) return;
+  if (!peerConnection) await makePeerConnection(callPeer.id);
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+  await flushIce();
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+  window.kyroSocket.emit("webrtc-answer", { to: callPeer.id, sdp: answer });
+}
 
 function bindCallSocket(socket) {
   socket.on("incoming-call", (data) => {
@@ -492,17 +519,29 @@ function bindCallSocket(socket) {
     if (!callPeer) {
       callPeer = { id: data.from, name: data.fromName || "Kyro user", avatar: data.fromAvatar || "" };
     }
+    if (callRole === "callee" && localStream) await answerOffer(data.sdp);
   });
-  socket.on("call-accepted", () => {
+  socket.on("call-accepted", async () => {
     document.getElementById("callStatus").textContent = "Accepted. Connecting…";
+    if (!callPeer) return;
+    if (!localStream) await getMic();
+    await makePeerConnection(callPeer.id);
+    const offer = await peerConnection.createOffer({ offerToReceiveAudio: true });
+    await peerConnection.setLocalDescription(offer);
+    socket.emit("webrtc-offer", { to: callPeer.id, sdp: offer });
   });
   socket.on("webrtc-answer", async (data) => {
     if (!peerConnection || !data.sdp) return;
     await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+    await flushIce();
     document.getElementById("callStatus").textContent = "Connected";
   });
   socket.on("webrtc-ice", async (data) => {
-    if (!peerConnection || !data.candidate) return;
+    if (!data.candidate) return;
+    if (!peerConnection || !peerConnection.remoteDescription) {
+      pendingIce.push(data.candidate);
+      return;
+    }
     try { await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (_) {}
   });
   socket.on("call-rejected", () => {
@@ -528,25 +567,73 @@ function renderCalls() {
   });
 }
 
-document.getElementById("addStoryBtn").addEventListener("click", () => {
-  const text = prompt("Write a short story");
-  if (!text) return;
-  const stories = load(LS.stories, []);
-  stories.unshift({ name: meName, text, at: Date.now() });
+let storyType = "text";
+document.getElementById("addStoryBtn").addEventListener("click", () => openModal("storyModal"));
+document.getElementById("closeStory").addEventListener("click", () => closeModal("storyModal"));
+document.querySelectorAll(".story-type").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    storyType = btn.dataset.type;
+    document.querySelectorAll(".story-type").forEach((b) => b.classList.toggle("is-on", b === btn));
+    document.getElementById("storyTextBox").hidden = storyType !== "text";
+    document.getElementById("storyImageBox").hidden = storyType !== "image";
+    document.getElementById("storyMusicBox").hidden = storyType !== "music";
+  });
+});
+
+document.getElementById("storyForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const story = {
+    name: meName,
+    type: storyType,
+    at: Date.now(),
+    expires: Date.now() + 24 * 60 * 60 * 1000,
+    text: ""
+  };
+  if (storyType === "text") {
+    story.text = document.getElementById("storyText").value.trim();
+    if (!story.text) return;
+  }
+  if (storyType === "image") {
+    const file = document.getElementById("storyImage").files[0];
+    if (!file) return;
+    story.image = await Kyro.fileToDataUrl(file);
+    story.text = "Photo story";
+  }
+  if (storyType === "music") {
+    const file = document.getElementById("storyMusic").files[0];
+    if (!file) return;
+    story.text = document.getElementById("storyMusicTitle").value.trim() || file.name;
+    story.musicName = file.name;
+    story.music = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+  }
+  const stories = load(LS.stories, []).filter((s) => !s.expires || s.expires > Date.now());
+  stories.unshift(story);
   save(LS.stories, stories);
+  closeModal("storyModal");
   renderStories();
 });
 
 function renderStories() {
   const box = document.getElementById("storyList");
   box.innerHTML = "";
-  load(LS.stories, []).forEach((s) => {
+  load(LS.stories, []).filter((s) => !s.expires || s.expires > Date.now()).forEach((s) => {
     const row = document.createElement("div");
-    row.className = "row";
-    row.innerHTML = "<div class='row-avatar'></div><div><b></b><span></span></div>";
-    setAvatar(row.querySelector(".row-avatar"), "", s.name);
+    row.className = "row story-card";
+    row.innerHTML = "<div class='row-avatar'></div><div class='grow'><b></b><span></span></div>";
+    setAvatar(row.querySelector(".row-avatar"), s.image || "", s.name);
     row.querySelector("b").textContent = s.name;
-    row.querySelector("span").textContent = s.text;
+    row.querySelector("span").textContent = (s.type || "text") + " · " + (s.text || "");
+    if (s.music) {
+      const audio = document.createElement("audio");
+      audio.controls = true;
+      audio.src = s.music;
+      audio.style.width = "100%";
+      row.querySelector(".grow").appendChild(audio);
+    }
     box.appendChild(row);
   });
 }
