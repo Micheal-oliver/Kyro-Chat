@@ -426,7 +426,55 @@ async function makePeerConnection(peerId) {
   return peerConnection;
 }
 
+let ringCtx = null;
+let ringTimer = null;
+let ringOn = false;
+
+function stopRingtone() {
+  ringOn = false;
+  if (ringTimer) clearTimeout(ringTimer);
+  ringTimer = null;
+  if (ringCtx) {
+    try { ringCtx.close(); } catch (_) {}
+    ringCtx = null;
+  }
+}
+
+function playRingtone() {
+  stopRingtone();
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return;
+  const ctx = new AudioCtx();
+  ringCtx = ctx;
+  ringOn = true;
+  const ding = (freq, start, dur) => {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, start);
+    g.gain.exponentialRampToValueAtTime(0.12, start + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start(start);
+    o.stop(start + dur + 0.02);
+  };
+  const loop = () => {
+    if (!ringOn || !ringCtx) return;
+    const t = ctx.currentTime;
+    ding(880, t, 0.16);
+    ding(1174, t + 0.16, 0.18);
+    ding(988, t + 0.36, 0.16);
+    ding(784, t + 0.56, 0.22);
+    ringTimer = setTimeout(loop, 1300);
+  };
+  ctx.resume().catch(() => {});
+  loop();
+}
+
 async function hangUp(notify) {
+  stopRingtone();
   const peerId = callPeer && callPeer.id;
   if (notify && peerId && window.kyroSocket) window.kyroSocket.emit("call-end", { to: peerId });
   if (peerConnection) {
@@ -458,6 +506,7 @@ async function startCall(peer) {
   setCallUi({ name: peer.name, avatar: peer.avatar, status: "Calling…", incoming: false });
   try {
     await getMic();
+    playRingtone();
     window.kyroSocket.emit("call-user", { to: peer.id, name: meName });
   } catch (err) {
     document.getElementById("callStatus").textContent = err.message || "Microphone permission is needed.";
@@ -476,6 +525,7 @@ document.getElementById("rejectCall").addEventListener("click", () => {
 document.getElementById("acceptCall").addEventListener("click", async () => {
   if (!callPeer) return;
   try {
+    stopRingtone();
     await getMic();
     window.kyroSocket.emit("call-accept", { to: callPeer.id });
     document.getElementById("acceptCall").hidden = true;
@@ -513,6 +563,7 @@ function bindCallSocket(socket) {
       status: "Incoming voice call",
       incoming: true
     });
+    playRingtone();
   });
   socket.on("webrtc-offer", async (data) => {
     incomingOffer = data.sdp;
@@ -522,6 +573,7 @@ function bindCallSocket(socket) {
     if (callRole === "callee" && localStream) await answerOffer(data.sdp);
   });
   socket.on("call-accepted", async () => {
+    stopRingtone();
     document.getElementById("callStatus").textContent = "Accepted. Connecting…";
     if (!callPeer) return;
     if (!localStream) await getMic();
@@ -534,6 +586,7 @@ function bindCallSocket(socket) {
     if (!peerConnection || !data.sdp) return;
     await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
     await flushIce();
+    stopRingtone();
     document.getElementById("callStatus").textContent = "Connected";
   });
   socket.on("webrtc-ice", async (data) => {
@@ -567,8 +620,39 @@ function renderCalls() {
   });
 }
 
+function openStoryDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("kyro-stories", 1);
+    req.onupgradeneeded = () => req.result.createObjectStore("media");
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function saveStoryMedia(id, blob) {
+  const db = await openStoryDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("media", "readwrite");
+    tx.objectStore("media").put(blob, id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function storyMediaUrl(id) {
+  const db = await openStoryDb();
+  return new Promise((resolve) => {
+    const tx = db.transaction("media", "readonly");
+    const req = tx.objectStore("media").get(id);
+    req.onsuccess = () => resolve(req.result ? URL.createObjectURL(req.result) : "");
+    req.onerror = () => resolve("");
+  });
+}
+
 let storyType = "text";
-document.getElementById("addStoryBtn").addEventListener("click", () => openModal("storyModal"));
+document.getElementById("addStoryBtn").addEventListener("click", () => {
+  const msg = document.getElementById("storyMsg");
+  if (msg) msg.textContent = "";
+  openModal("storyModal");
+});
 document.getElementById("closeStory").addEventListener("click", () => closeModal("storyModal"));
 document.querySelectorAll(".story-type").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -582,60 +666,83 @@ document.querySelectorAll(".story-type").forEach((btn) => {
 
 document.getElementById("storyForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const story = {
-    name: meName,
-    type: storyType,
-    at: Date.now(),
-    expires: Date.now() + 24 * 60 * 60 * 1000,
-    text: ""
-  };
-  if (storyType === "text") {
-    story.text = document.getElementById("storyText").value.trim();
-    if (!story.text) return;
+  const msg = document.getElementById("storyMsg");
+  msg.className = "form-msg";
+  msg.textContent = "Saving story…";
+  try {
+    const story = {
+      name: meName,
+      type: storyType,
+      at: Date.now(),
+      expires: Date.now() + 24 * 60 * 60 * 1000,
+      text: ""
+    };
+    if (storyType === "text") {
+      story.text = document.getElementById("storyText").value.trim();
+      if (!story.text) {
+        msg.className = "form-msg bad";
+        msg.textContent = "Write some text first.";
+        return;
+      }
+    }
+    if (storyType === "image") {
+      const file = document.getElementById("storyImage").files[0];
+      if (!file) {
+        msg.className = "form-msg bad";
+        msg.textContent = "Choose a photo.";
+        return;
+      }
+      story.image = await Kyro.fileToDataUrl(file);
+      story.text = "Photo story";
+    }
+    if (storyType === "music") {
+      const file = document.getElementById("storyMusic").files[0];
+      if (!file) {
+        msg.className = "form-msg bad";
+        msg.textContent = "Choose an audio file.";
+        return;
+      }
+      if (file.size > 12 * 1024 * 1024) {
+        msg.className = "form-msg bad";
+        msg.textContent = "Use an audio file smaller than 12MB.";
+        return;
+      }
+      story.text = document.getElementById("storyMusicTitle").value.trim() || file.name;
+      story.musicName = file.name;
+      story.mediaId = "music-" + Date.now();
+      await saveStoryMedia(story.mediaId, file);
+    }
+    const stories = load(LS.stories, []).filter((s) => !s.expires || s.expires > Date.now());
+    stories.unshift(story);
+    save(LS.stories, stories);
+    closeModal("storyModal");
+    await renderStories();
+  } catch (err) {
+    msg.className = "form-msg bad";
+    msg.textContent = err.message || "Could not save that story.";
   }
-  if (storyType === "image") {
-    const file = document.getElementById("storyImage").files[0];
-    if (!file) return;
-    story.image = await Kyro.fileToDataUrl(file);
-    story.text = "Photo story";
-  }
-  if (storyType === "music") {
-    const file = document.getElementById("storyMusic").files[0];
-    if (!file) return;
-    story.text = document.getElementById("storyMusicTitle").value.trim() || file.name;
-    story.musicName = file.name;
-    story.music = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(file);
-    });
-  }
-  const stories = load(LS.stories, []).filter((s) => !s.expires || s.expires > Date.now());
-  stories.unshift(story);
-  save(LS.stories, stories);
-  closeModal("storyModal");
-  renderStories();
 });
 
-function renderStories() {
+async function renderStories() {
   const box = document.getElementById("storyList");
   box.innerHTML = "";
-  load(LS.stories, []).filter((s) => !s.expires || s.expires > Date.now()).forEach((s) => {
+  const list = load(LS.stories, []).filter((s) => !s.expires || s.expires > Date.now());
+  for (const s of list) {
     const row = document.createElement("div");
     row.className = "row story-card";
     row.innerHTML = "<div class='row-avatar'></div><div class='grow'><b></b><span></span></div>";
     setAvatar(row.querySelector(".row-avatar"), s.image || "", s.name);
     row.querySelector("b").textContent = s.name;
     row.querySelector("span").textContent = (s.type || "text") + " · " + (s.text || "");
-    if (s.music) {
+    if (s.mediaId || s.music) {
       const audio = document.createElement("audio");
       audio.controls = true;
-      audio.src = s.music;
       audio.style.width = "100%";
+      audio.src = s.music || await storyMediaUrl(s.mediaId);
       row.querySelector(".grow").appendChild(audio);
     }
     box.appendChild(row);
-  });
+  }
 }
 
 document.getElementById("addCommunityBtn").addEventListener("click", () => {
