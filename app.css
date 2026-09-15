@@ -279,12 +279,33 @@ html, body.app-body {
   background: rgba(60, 231, 255, 0.12);
 }
 
+.presence {
+  display: block;
+  font-size: 12px;
+  color: #8696a0;
+  margin-top: 2px;
+}
+.row.is-online .presence { color: #25d366; }
+.online-dot {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #25d366;
+  border: 2px solid #0b141a;
+  display: none;
+}
+.row.is-online .online-dot { display: block; }
+
 .me-avatar, .peer-avatar, .row-avatar {
   width: 46px;
   height: 46px;
   border-radius: 50%;
   display: grid;
   place-items: center;
+  position: relative;
   font-weight: 700;
   background: linear-gradient(135deg, var(--purple, #9b6dff), var(--cyan, #3ce7ff));
   color: #070712;
