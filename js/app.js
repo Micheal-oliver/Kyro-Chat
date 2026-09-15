@@ -292,11 +292,10 @@ document.getElementById("composer").addEventListener("submit", async (e) => {
   box.scrollTop = box.scrollHeight;
   if (String(currentPeer.id).startsWith("group:")) return;
   if (window.kyroSocket && window.kyroSocket.connected) {
-    window.kyroSocket.emit("send-message", { receiverId: currentPeer.id, text });
-  } else {
-    const data = await Kyro.api.sendMessage(currentPeer.id, text);
-    if (!data._ok) bubble.style.opacity = "0.55";
+    window.kyroSocket.emit("send-message", { receiverId: currentPeer.id, to: currentPeer.id, text, content: text });
   }
+  const saved = await Kyro.api.sendMessage(currentPeer.id, text);
+  if (saved && saved._ok === false) bubble.style.opacity = "0.55";
 });
 
 function openModal(id) {
@@ -396,7 +395,16 @@ document.getElementById("searchInput").addEventListener("keydown", async (e) => 
 const ICE_SERVERS = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" }
+    { urls: "stun:stun1.l.google.com:19302" },
+    {
+      urls: [
+        "turn:openrelay.metered.ca:80",
+        "turn:openrelay.metered.ca:443",
+        "turn:openrelay.metered.ca:443?transport=tcp"
+      ],
+      username: "openrelayproject",
+      credential: "openrelayproject"
+    }
   ]
 };
 let callPeer = null;
@@ -428,10 +436,19 @@ async function getMic() {
   return localStream;
 }
 
+function markLive() {
+  stopRingtone();
+  const el = document.getElementById("callStatus");
+  if (el) el.textContent = "You're on the call";
+}
+
 function attachRemoteAudio(stream) {
   const audio = document.getElementById("remoteAudio");
   audio.srcObject = stream;
+  audio.muted = false;
+  audio.volume = 1;
   audio.play().catch(() => {});
+  markLive();
 }
 
 async function flushIce() {
@@ -444,13 +461,14 @@ async function flushIce() {
 
 async function makePeerConnection(peerId) {
   pendingIce = [];
+  if (peerConnection) { try { peerConnection.close(); } catch (_) {} }
   peerConnection = new RTCPeerConnection(ICE_SERVERS);
+  peerConnection.addTransceiver("audio", { direction: "sendrecv" });
   if (localStream) {
     localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
   }
   peerConnection.ontrack = (event) => {
-    attachRemoteAudio(event.streams[0] || new MediaStream(event.track ? [event.track] : []));
-    document.getElementById("callStatus").textContent = "Connected";
+    attachRemoteAudio(event.streams[0] || new MediaStream([event.track]));
   };
   peerConnection.onicecandidate = (event) => {
     if (event.candidate && window.kyroSocket) {
@@ -460,10 +478,8 @@ async function makePeerConnection(peerId) {
   peerConnection.onconnectionstatechange = () => {
     const state = peerConnection && peerConnection.connectionState;
     if (!state) return;
-    document.getElementById("callStatus").textContent =
-      state === "connected" ? "Connected" :
-      state === "failed" || state === "disconnected" ? "Call failed. Try again." :
-      "Connecting…";
+    if (state === "connected") markLive();
+    else if (state === "failed") document.getElementById("callStatus").textContent = "Call failed. Try Wi‑Fi.";
   };
   return peerConnection;
 }
@@ -548,8 +564,12 @@ async function startCall(peer) {
   setCallUi({ name: peer.name, avatar: peer.avatar, status: "Calling…", incoming: false });
   try {
     await getMic();
+    await makePeerConnection(peer.id);
+    const offer = await peerConnection.createOffer({ offerToReceiveAudio: true });
+    await peerConnection.setLocalDescription(offer);
     playRingtone();
     window.kyroSocket.emit("call-user", { to: peer.id, name: meName });
+    window.kyroSocket.emit("webrtc-offer", { to: peer.id, sdp: offer });
   } catch (err) {
     document.getElementById("callStatus").textContent = err.message || "Microphone permission is needed.";
   }
@@ -573,7 +593,7 @@ document.getElementById("acceptCall").addEventListener("click", async () => {
     document.getElementById("acceptCall").hidden = true;
     document.getElementById("rejectCall").hidden = true;
     document.getElementById("endCall").hidden = false;
-    document.getElementById("callStatus").textContent = "Connecting…";
+    document.getElementById("callStatus").textContent = "You're on the call";
     if (incomingOffer) await answerOffer(incomingOffer);
   } catch (err) {
     document.getElementById("callStatus").textContent = err.message || "Could not accept call.";
@@ -616,10 +636,10 @@ function bindCallSocket(socket) {
   });
   socket.on("call-accepted", async () => {
     stopRingtone();
-    document.getElementById("callStatus").textContent = "Accepted. Connecting…";
+    markLive();
     if (!callPeer) return;
     if (!localStream) await getMic();
-    await makePeerConnection(callPeer.id);
+    if (!peerConnection) await makePeerConnection(callPeer.id);
     const offer = await peerConnection.createOffer({ offerToReceiveAudio: true });
     await peerConnection.setLocalDescription(offer);
     socket.emit("webrtc-offer", { to: callPeer.id, sdp: offer });
@@ -628,8 +648,7 @@ function bindCallSocket(socket) {
     if (!peerConnection || !data.sdp) return;
     await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
     await flushIce();
-    stopRingtone();
-    document.getElementById("callStatus").textContent = "Connected";
+    markLive();
   });
   socket.on("webrtc-ice", async (data) => {
     if (!data.candidate) return;
@@ -872,10 +891,33 @@ function applyIncoming(msg) {
     clearUnread(peerId);
   } else if (!mine) {
     addUnread(peerId);
+    showMessagePopup(peerId, text);
   }
 
   upsertChatPreview(peerId, text);
   renderChats(chats);
+}
+
+function showMessagePopup(peerId, text) {
+  let toast = document.getElementById("msgToast");
+  if (!toast) {
+    toast = document.createElement("button");
+    toast.id = "msgToast";
+    toast.className = "msg-toast";
+    toast.type = "button";
+    document.body.appendChild(toast);
+  }
+  const chat = chats.map(peerFrom).find((p) => String(p.id) === String(peerId));
+  const contact = load(LS.contacts, []).find((c) => String(c.id) === String(peerId));
+  const name = (chat && chat.name) || (contact && contact.name) || "New message";
+  toast.hidden = false;
+  toast.textContent = name + ": " + text;
+  toast.onclick = () => {
+    toast.hidden = true;
+    openThread(chat || contact || { id: peerId, name });
+  };
+  clearTimeout(toast._hide);
+  toast._hide = setTimeout(() => { toast.hidden = true; }, 4000);
 }
 
 function connectSocket() {
@@ -884,7 +926,9 @@ function connectSocket() {
   if (!token || token === "session") return;
   const socket = io(Kyro.API_BASE, { auth: { token }, transports: ["websocket", "polling"] });
   window.kyroSocket = socket;
+  socket.on("connect", () => {});
   socket.on("new-message", applyIncoming);
+  socket.on("message", applyIncoming);
   socket.on("chat-updated", applyIncoming);
   socket.on("presence", (data) => {
     onlineIds.clear();
