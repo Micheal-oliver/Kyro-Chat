@@ -132,6 +132,9 @@
     chats() {
       return request("/api/chats");
     },
+    agoraToken(channel) {
+      return request("/api/calls/agora?channel=" + encodeURIComponent(channel));
+    },
     lookup(query) {
       const q = encodeURIComponent(query);
       return request("/api/users/lookup?q=" + q + "&email=" + q + "&phone=" + q);

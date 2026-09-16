@@ -413,6 +413,10 @@ let peerConnection = null;
 let localStream = null;
 let incomingOffer = null;
 let pendingIce = [];
+let agoraClient = null;
+let agoraTrack = null;
+let callChannel = "";
+
 
 function logCall(name, note) {
   const calls = load(LS.calls, []);
@@ -531,8 +535,45 @@ function playRingtone() {
   loop();
 }
 
+async function leaveAgora() {
+  try { if (agoraTrack) agoraTrack.stop(); } catch (_) {}
+  try { if (agoraTrack) agoraTrack.close(); } catch (_) {}
+  try { if (agoraClient) await agoraClient.leave(); } catch (_) {}
+  agoraTrack = null;
+  agoraClient = null;
+  callChannel = "";
+}
+
+async function joinAgoraCall(channel) {
+  if (typeof AgoraRTC !== "function" && typeof AgoraRTC !== "object") {
+    throw new Error("Agora SDK did not load");
+  }
+  const data = await Kyro.api.agoraToken(channel);
+  if (!data._ok || !data.appId) {
+    throw new Error(data.message || "Set AGORA_APP_ID on the backend.");
+  }
+  callChannel = channel;
+  agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+  agoraClient.on("user-published", async (user, mediaType) => {
+    await agoraClient.subscribe(user, mediaType);
+    if (mediaType === "audio" && user.audioTrack) {
+      user.audioTrack.play();
+      markLive();
+    }
+  });
+  await agoraClient.join(data.appId, data.channel, data.token || null, data.uid || null);
+  agoraTrack = await AgoraRTC.createMicrophoneAudioTrack();
+  await agoraClient.publish([agoraTrack]);
+  markLive();
+}
+
+function callChannelName(a, b) {
+  return "kyro" + [String(a), String(b)].sort().join("").replace(/[^a-zA-Z0-9]/g, "").slice(0, 48);
+}
+
 async function hangUp(notify) {
   stopRingtone();
+  await leaveAgora();
   const peerId = callPeer && callPeer.id;
   if (notify && peerId && window.kyroSocket) window.kyroSocket.emit("call-end", { to: peerId });
   if (peerConnection) {
@@ -563,13 +604,10 @@ async function startCall(peer) {
   logCall(peer.name, "Outgoing");
   setCallUi({ name: peer.name, avatar: peer.avatar, status: "Calling…", incoming: false });
   try {
-    await getMic();
-    await makePeerConnection(peer.id);
-    const offer = await peerConnection.createOffer({ offerToReceiveAudio: true });
-    await peerConnection.setLocalDescription(offer);
     playRingtone();
-    window.kyroSocket.emit("call-user", { to: peer.id, name: meName });
-    window.kyroSocket.emit("webrtc-offer", { to: peer.id, sdp: offer });
+    callChannel = callChannelName(meId, peer.id);
+    window.kyroSocket.emit("call-user", { to: peer.id, name: meName, channel: callChannel });
+    await joinAgoraCall(callChannel);
   } catch (err) {
     document.getElementById("callStatus").textContent = err.message || "Microphone permission is needed.";
   }
@@ -588,13 +626,12 @@ document.getElementById("acceptCall").addEventListener("click", async () => {
   if (!callPeer) return;
   try {
     stopRingtone();
-    await getMic();
-    window.kyroSocket.emit("call-accept", { to: callPeer.id });
     document.getElementById("acceptCall").hidden = true;
     document.getElementById("rejectCall").hidden = true;
     document.getElementById("endCall").hidden = false;
     document.getElementById("callStatus").textContent = "You're on the call";
-    if (incomingOffer) await answerOffer(incomingOffer);
+    window.kyroSocket.emit("call-accept", { to: callPeer.id, channel: callChannel });
+    await joinAgoraCall(callChannel || callChannelName(meId, callPeer.id));
   } catch (err) {
     document.getElementById("callStatus").textContent = err.message || "Could not accept call.";
   }
@@ -618,6 +655,7 @@ function bindCallSocket(socket) {
       avatar: data.fromAvatar || ""
     };
     callRole = "callee";
+    callChannel = data.channel || callChannelName(meId, data.from);
     logCall(callPeer.name, "Incoming");
     setCallUi({
       name: callPeer.name,
