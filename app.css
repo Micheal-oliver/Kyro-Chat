@@ -612,3 +612,33 @@ html, body.app-body {
   padding: 12px 14px;
   text-align: left;
 }
+
+
+.row b { font-size: 17px; font-weight: 700; }
+.thread-head strong { font-size: 17px; font-weight: 800; }
+.typing-line { padding: 6px 16px; color: #3ce7ff; font-size: 13px; }
+.composer { align-items: center; gap: 6px; }
+.composer input { flex: 1; height: 44px; font-size: 16px; }
+.send-btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center; padding: 0;
+}
+.bubble { font-size: 16px; font-weight: 500; max-width: 82%; }
+.bubble img { max-width: 220px; border-radius: 12px; display: block; }
+.bubble audio { width: 180px; }
+.ticks { display: inline-block; margin-left: 8px; font-size: 11px; opacity: 0.8; font-style: normal; }
+.ticks.seen { color: #6ecbff; }
+.icon-round.hot { background: #e44848; }
+.live-call {
+  min-height: 100dvh; width: min(520px, 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #070712; position: relative; padding: 24px;
+}
+.call-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 28px; }
+.call-ctl {
+  min-width: 92px; height: 48px; border-radius: 999px; border: 0;
+  background: #202c33; color: #fff; font-weight: 700;
+}
+.call-ctl.on { background: #3ce7ff; color: #070712; }
+.call-ctl.end { background: #e44848; }
+.call-ico svg { display: block; }
