@@ -657,3 +657,7 @@ html, body.app-body {
 .people-pick label { display:flex; gap:8px; align-items:center; color:#e9edef; margin:6px 0; }
 .tab-ico { display:grid; place-items:center; }
 .adm { margin-left:auto; font-size:12px; color:#8696a0; }
+
+.call-videos { width: min(92vw, 420px); position: relative; min-height: 180px; }
+#remoteVideo { width: 100%; border-radius: 16px; background: #000; min-height: 180px; }
+#localVideo { position: absolute; right: 8px; bottom: 8px; width: 96px; height: 128px; object-fit: cover; border-radius: 12px; background: #111; }
