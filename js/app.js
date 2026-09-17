@@ -91,6 +91,35 @@ function paintChatBadge() {
   badge.hidden = total <= 0;
 }
 
+function groupDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("kyro-group-folder", 1);
+    req.onupgradeneeded = () => req.result.createObjectStore("msgs");
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function loadGroupMessages(id) {
+  const db = await groupDb();
+  return new Promise((resolve) => {
+    const tx = db.transaction("msgs", "readonly");
+    const q = tx.objectStore("msgs").get(String(id));
+    q.onsuccess = () => resolve(Array.isArray(q.result) ? q.result : []);
+    q.onerror = () => resolve([]);
+  });
+}
+async function saveGroupMessage(id, msg) {
+  const list = await loadGroupMessages(id);
+  list.push(msg);
+  const db = await groupDb();
+  return new Promise((resolve) => {
+    const tx = db.transaction("msgs", "readwrite");
+    tx.objectStore("msgs").put(list, String(id));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => resolve();
+  });
+}
+
 function load(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
   catch { return fallback; }
@@ -158,6 +187,7 @@ function peerFrom(item) {
     avatar: other.avatar || other.profilePicture || "",
     preview: (item.lastMessage && (item.lastMessage.text || item.lastMessage.content)) || item.preview || "Tap to chat",
     lastSeen: other.lastSeen || item.lastSeen || "",
+    publicKey: other.publicKey || "",
     unread: unreadCount(other._id || other.id || item.otherUserId || item.id)
   };
 }
@@ -257,8 +287,11 @@ document.getElementById("backChat").addEventListener("click", () => {
 async function loadMessages() {
   const el = document.getElementById("messages");
   el.innerHTML = "";
-  if (!currentPeer || String(currentPeer.id).startsWith("group:")) {
-    el.innerHTML = '<p class="hint">Group messages stay on this device for now.</p>';
+  if (currentPeer && String(currentPeer.id).startsWith("group:")) {
+    const local = await loadGroupMessages(currentPeer.id);
+    if (!local.length) el.innerHTML = '<p class="hint">No group messages yet. They are saved on this device.</p>';
+    else local.forEach((m) => el.appendChild(makeBubble(m)));
+    el.scrollTop = el.scrollHeight;
     return;
   }
   const data = await Kyro.api.messages(currentPeer.id);
@@ -304,8 +337,12 @@ function makeBubble(m) {
     bubble.appendChild(audio);
   } else {
     const t = document.createElement("span");
-    t.textContent = m.text || m.content || "";
+    const raw = m.text || m.content || "";
+    t.textContent = raw;
     bubble.appendChild(t);
+    if (String(raw).startsWith("ENC1:") && window.KyroE2E) {
+      KyroE2E.decryptText(raw, currentPeer && currentPeer.publicKey).then((plain) => { t.textContent = plain; });
+    }
   }
   bubble.insertAdjacentHTML("beforeend", tickHtml(m));
   bindMsgActions(bubble, m);
@@ -328,12 +365,19 @@ async function sendChat(payload, bubble) {
   const targets = String(currentPeer.id).startsWith("group:")
     ? (currentPeer.members || (load(LS.groups, []).find((g) => "group:" + g.id === currentPeer.id) || {}).members || [])
     : [currentPeer.id];
+  let outText = payload.text || payload.kind || "";
+  if (payload.kind === "text" && window.KyroE2E && currentPeer.publicKey) {
+    outText = await KyroE2E.encryptText(outText, currentPeer.publicKey);
+  }
   const bodyBase = {
-    text: payload.text || payload.kind || "",
-    content: payload.text || payload.kind || "",
+    text: outText,
+    content: outText,
     kind: payload.kind || "text",
     media: payload.media || ""
   };
+  if (String(currentPeer.id).startsWith("group:")) {
+    saveGroupMessage(currentPeer.id, { ...bodyBase, senderId: meId, mine: true, at: Date.now() });
+  }
   if (window.kyroSocket && window.kyroSocket.connected) {
     targets.forEach((id) => {
       if (!id || id === meId) return;
@@ -360,7 +404,6 @@ document.getElementById("composer").addEventListener("submit", async (e) => {
   bubble.textContent = text;
   box.appendChild(bubble);
   box.scrollTop = box.scrollHeight;
-  if (String(currentPeer.id).startsWith("group:")) return;
   await sendChat({ text, kind: "text" }, bubble);
 });
 
@@ -558,7 +601,9 @@ let incomingOffer = null;
 let pendingIce = [];
 let agoraClient = null;
 let agoraTrack = null;
+let agoraCam = null;
 let callChannel = "";
+let wantVideo = false;
 
 
 function logCall(name, note) {
@@ -681,10 +726,14 @@ function playRingtone() {
 async function leaveAgora() {
   try { if (agoraTrack) agoraTrack.stop(); } catch (_) {}
   try { if (agoraTrack) agoraTrack.close(); } catch (_) {}
+  try { if (agoraCam) agoraCam.stop(); } catch (_) {}
+  try { if (agoraCam) agoraCam.close(); } catch (_) {}
   try { if (agoraClient) await agoraClient.leave(); } catch (_) {}
   agoraTrack = null;
+  agoraCam = null;
   agoraClient = null;
   callChannel = "";
+  wantVideo = false;
 }
 
 async function ensureAgoraSdk() {
@@ -713,10 +762,20 @@ async function joinAgoraCall(channel) {
       user.audioTrack.play();
       markLive();
     }
+    if (mediaType === "video" && user.videoTrack) {
+      user.videoTrack.play("remoteVideo");
+      markLive();
+    }
   });
   await agoraClient.join(data.appId, data.channel, data.token || null, data.uid || null);
   agoraTrack = await AgoraRTC.createMicrophoneAudioTrack();
-  await agoraClient.publish([agoraTrack]);
+  const pub = [agoraTrack];
+  if (wantVideo) {
+    agoraCam = await AgoraRTC.createCameraVideoTrack();
+    agoraCam.play("localVideo");
+    pub.push(agoraCam);
+  }
+  await agoraClient.publish(pub);
   document.getElementById("callStatus").textContent = "Waiting for the other person…";
 }
 
@@ -746,7 +805,8 @@ async function hangUp(notify) {
   closeModal("callModal");
 }
 
-async function startCall(peer) {
+async function startCall(peer, video) {
+  wantVideo = Boolean(video);
   if (!window.kyroSocket || !window.kyroSocket.connected) {
     document.getElementById("callStatus").textContent = "Socket is not connected.";
     setCallUi({ name: peer.name, avatar: peer.avatar, status: "Cannot call until chat socket is online." });
@@ -759,7 +819,7 @@ async function startCall(peer) {
   try {
     playRingtone();
     callChannel = callChannelName(meId, peer.id);
-    window.kyroSocket.emit("call-user", { to: peer.id, name: meName, channel: callChannel });
+    window.kyroSocket.emit("call-user", { to: peer.id, name: meName, channel: callChannel, video: wantVideo });
     document.getElementById("callStatus").textContent = "Ringing…";
   } catch (err) {
     document.getElementById("callStatus").textContent = err.message || "Microphone permission is needed.";
@@ -767,7 +827,23 @@ async function startCall(peer) {
 }
 
 document.getElementById("threadCall").addEventListener("click", () => {
-  if (currentPeer) startCall(currentPeer);
+  if (currentPeer) startCall(currentPeer, false);
+});
+const vidBtn = document.getElementById("threadVideo");
+if (vidBtn) vidBtn.addEventListener("click", () => { if (currentPeer) startCall(currentPeer, true); });
+const camBtn = document.getElementById("camBtn");
+if (camBtn) camBtn.addEventListener("click", async () => {
+  if (!agoraClient) return;
+  if (agoraCam) {
+    await agoraClient.unpublish(agoraCam);
+    agoraCam.stop(); agoraCam.close(); agoraCam = null;
+    camBtn.classList.remove("on");
+    return;
+  }
+  agoraCam = await AgoraRTC.createCameraVideoTrack();
+  agoraCam.play("localVideo");
+  await agoraClient.publish([agoraCam]);
+  camBtn.classList.add("on");
 });
 document.getElementById("endCall").addEventListener("click", () => hangUp(true));
 document.getElementById("muteBtn").addEventListener("click", () => {
@@ -823,6 +899,7 @@ function bindCallSocket(socket) {
     };
     callRole = "callee";
     callChannel = data.channel || callChannelName(meId, data.from);
+    wantVideo = Boolean(data.video);
     logCall(callPeer.name, "Incoming");
     setCallUi({
       name: callPeer.name,
@@ -1314,6 +1391,7 @@ function hideKyroLoader() {
     }
   } catch (_) {}
   paintMe();
+  if (window.KyroE2E) KyroE2E.publishKey();
   renderStories();
   renderCommunities();
   renderCalls();
