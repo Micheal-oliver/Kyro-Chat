@@ -32,7 +32,9 @@
           <p class="role-pill" id="rolePill">User</p>
         </div>
       </div>
-      <button class="icon-round" id="searchToggle" type="button" aria-label="Search">⌕</button>
+      <button class="icon-round" id="searchToggle" type="button" aria-label="Search">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+      </button>
     </header>
 
     <div class="wa-search" id="searchBar" hidden>
@@ -50,8 +52,8 @@
       </section>
 
       <section class="tab-page" data-tab="story">
-        <button class="story-add" id="addStoryBtn" type="button">+ Add story</button>
-        <div class="list" id="storyList"></div>
+        <p class="hint status-note">Stories disappear after 24 hours</p>
+        <div class="status-row" id="storyList"></div>
       </section>
 
       <section class="tab-page" data-tab="communities">
@@ -84,11 +86,11 @@
     </main>
 
     <nav class="wa-footer">
-      <button class="tab is-on" data-go="chats" type="button"><span>💬</span>Chats</button>
-      <button class="tab" data-go="story" type="button"><span>◉</span>Story</button>
-      <button class="tab" data-go="communities" type="button"><span>⌂</span>Communities</button>
-      <button class="tab" data-go="calls" type="button"><span>☎</span>Calls</button>
-      <button class="tab" data-go="account" type="button"><span>●</span>Account</button>
+      <button class="tab is-on" data-go="chats" type="button"><span class="tab-ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M4 4h16v12H7l-3 3V4zm4 5h8v2H8V9zm0-3h8v2H8V6z"/></svg></span>Chats</button>
+      <button class="tab" data-go="story" type="button"><span class="tab-ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4"/></svg></span>Story</button>
+      <button class="tab" data-go="communities" type="button"><span class="tab-ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 12a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm-7 8v-1a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v1H5zm13-9a2.5 2.5 0 1 0-2.5-2.5A2.5 2.5 0 0 0 18 11zm2 8v-1a5 5 0 0 0-2-4h4v5h-2z"/></svg></span>Communities</button>
+      <button class="tab" data-go="calls" type="button"><span class="tab-ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6.6 10.8c1.5 3 3.6 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z"/></svg></span>Calls</button>
+      <button class="tab" data-go="account" type="button"><span class="tab-ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-3.3 0-8 1.7-8 5v1h16v-1c0-3.3-4.7-5-8-5z"/></svg></span>Account</button>
     </nav>
   </div>
 
@@ -148,6 +150,8 @@
       <h3>Create group</h3>
       <label>Group name</label>
       <input id="groupName" required />
+      <label>Add members</label>
+      <div id="groupPeople" class="people-pick"></div>
       <button class="btn btn-primary" type="submit" style="width:100%">Create group</button>
       <button class="sheet-btn ghost" id="closeGroup" type="button">Cancel</button>
     </form>
@@ -196,6 +200,41 @@
       <p class="form-msg" id="storyMsg"></p>
       <button class="btn btn-primary" type="submit" style="width:100%">Share story</button>
     </form>
+  </div>
+
+  <div class="status-view is-off" id="statusView" hidden>
+    <button class="sheet-x" id="closeStatus" type="button">×</button>
+    <div class="status-progress" id="statusProgress"></div>
+    <p class="status-name" id="statusName"></p>
+    <p class="status-note" id="statusLeft"></p>
+    <div class="status-body" id="statusBody"></div>
+  </div>
+
+  <div class="modal is-off" id="msgActions" hidden>
+    <div class="sheet">
+      <button class="sheet-btn" id="actDelete" type="button">Delete</button>
+      <button class="sheet-btn" id="actForward" type="button">Forward</button>
+      <button class="sheet-btn" id="actSave" type="button">Save to phone</button>
+      <button class="sheet-btn ghost" id="closeActions" type="button">Cancel</button>
+    </div>
+  </div>
+
+  <div class="modal is-off" id="forwardModal" hidden>
+    <div class="sheet tall">
+      <button class="sheet-x" id="closeForward" type="button">×</button>
+      <h3>Forward to</h3>
+      <div class="list" id="forwardList"></div>
+    </div>
+  </div>
+
+  <div class="modal is-off" id="groupManage" hidden>
+    <div class="sheet tall">
+      <button class="sheet-x" id="closeGroupManage" type="button">×</button>
+      <h3 id="groupManageTitle">Group</h3>
+      <p class="hint">Creator is admin. Admins can add members and make others admin.</p>
+      <div id="groupMemberBox" class="people-pick"></div>
+      <button class="btn btn-primary" id="saveGroupMembers" type="button" style="width:100%">Save members</button>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/agora-rtc-sdk-ng@4.20.2/AgoraRTC_N-4.20.2.js"></script>

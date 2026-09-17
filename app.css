@@ -642,3 +642,18 @@ html, body.app-body {
 .call-ctl.on { background: #3ce7ff; color: #070712; }
 .call-ctl.end { background: #e44848; }
 .call-ico svg { display: block; }
+
+.status-note { padding: 10px 14px 0; }
+.status-row { display:flex; gap:14px; overflow-x:auto; padding:16px 14px; }
+.status-item { width:74px; text-align:center; background:none; border:0; color:inherit; }
+.status-ring { width:64px; height:64px; border-radius:50%; padding:3px; background:conic-gradient(#3ce7ff,#9b6dff,#ff6bd6,#3ce7ff); }
+.status-ring > i { display:grid; place-items:center; width:100%; height:100%; border-radius:50%; background:#111b21; font-weight:700; }
+.status-item small { display:block; margin-top:6px; font-size:12px; }
+.status-view { position:fixed; inset:0; z-index:40; background:#000; color:#fff; display:flex; flex-direction:column; }
+.status-progress { height:3px; background:#3ce7ff; width:100%; }
+.status-name, .status-view .status-note { padding:12px 48px 0 16px; }
+.status-body { flex:1; display:grid; place-items:center; font-size:28px; text-align:center; padding:20px; }
+.status-body img { max-width:100%; max-height:70dvh; }
+.people-pick label { display:flex; gap:8px; align-items:center; color:#e9edef; margin:6px 0; }
+.tab-ico { display:grid; place-items:center; }
+.adm { margin-left:auto; font-size:12px; color:#8696a0; }
