@@ -212,9 +212,11 @@ function renderChats(items) {
     const row = document.createElement("button");
     row.className = "row";
     row.type = "button";
-    row.innerHTML = '<div class="row-avatar">G</div><div><b></b><span>Group</span></div>';
+    row.innerHTML = '<div class="row-avatar">G</div><div class="grow"><b></b><span>Group</span></div><button class="mini" type="button">+</button>';
     row.querySelector("b").textContent = g.name;
-    row.addEventListener("click", () => openThread({ id: "group:" + g.id, name: g.name, preview: "Group chat" }));
+    row.querySelector("span").textContent = (g.members || []).length + " members";
+    row.querySelector(".mini").addEventListener("click", (e) => { e.stopPropagation(); openGroupManage(g); });
+    row.addEventListener("click", () => openThread({ id: "group:" + g.id, name: g.name, preview: "Group chat", members: g.members || [] }));
     box.appendChild(row);
   });
   const seen = new Set(items.map((item) => String(peerFrom(item).id)));
@@ -306,23 +308,42 @@ function makeBubble(m) {
     bubble.appendChild(t);
   }
   bubble.insertAdjacentHTML("beforeend", tickHtml(m));
+  bindMsgActions(bubble, m);
   return bubble;
 }
 
+let actionMsg = null;
+function bindMsgActions(bubble, m) {
+  let timer;
+  const start = () => { timer = setTimeout(() => { actionMsg = { bubble, m }; openModal("msgActions"); }, 450); };
+  const cancel = () => clearTimeout(timer);
+  bubble.addEventListener("touchstart", start);
+  bubble.addEventListener("mousedown", start);
+  bubble.addEventListener("touchend", cancel);
+  bubble.addEventListener("mouseup", cancel);
+  bubble.addEventListener("mouseleave", cancel);
+}
+
 async function sendChat(payload, bubble) {
-  const body = {
-    receiverId: currentPeer.id,
-    to: currentPeer.id,
+  const targets = String(currentPeer.id).startsWith("group:")
+    ? (currentPeer.members || (load(LS.groups, []).find((g) => "group:" + g.id === currentPeer.id) || {}).members || [])
+    : [currentPeer.id];
+  const bodyBase = {
     text: payload.text || payload.kind || "",
     content: payload.text || payload.kind || "",
     kind: payload.kind || "text",
     media: payload.media || ""
   };
   if (window.kyroSocket && window.kyroSocket.connected) {
-    window.kyroSocket.emit("send-message", body);
+    targets.forEach((id) => {
+      if (!id || id === meId) return;
+      window.kyroSocket.emit("send-message", { ...bodyBase, receiverId: id, to: id });
+    });
     return;
   }
-  const saved = await Kyro.api.sendMessage(currentPeer.id, body.text);
+  const first = targets[0];
+  if (!first) return;
+  const saved = await Kyro.api.sendMessage(first, bodyBase.text);
   if (saved && saved._ok === false && bubble) bubble.style.opacity = "0.55";
 }
 
@@ -385,8 +406,8 @@ let recMedia = null;
 let recChunks = [];
 document.getElementById("recBtn").addEventListener("click", async () => {
   if (!currentPeer) return;
-  if (recMedia) {
-    recMedia.stop();
+  if (recMedia && recMedia._rec) {
+    recMedia._rec.stop();
     return;
   }
   recMedia = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -428,6 +449,17 @@ document.getElementById("chooseContact").addEventListener("click", () => {
 });
 document.getElementById("chooseGroup").addEventListener("click", () => {
   closeModal("plusModal");
+  const box = document.getElementById("groupPeople");
+  box.innerHTML = "";
+  const people = load(LS.contacts, []);
+  if (!people.length) box.innerHTML = "<p class='hint'>Add contacts first.</p>";
+  people.forEach((p) => {
+    const row = document.createElement("label");
+    row.innerHTML = "<input type='checkbox' /><span></span>";
+    row.querySelector("input").value = p.id;
+    row.querySelector("span").textContent = p.name;
+    box.appendChild(row);
+  });
   openModal("groupModal");
 });
 document.getElementById("closeContact").addEventListener("click", () => closeModal("contactModal"));
@@ -471,8 +503,9 @@ document.getElementById("groupForm").addEventListener("submit", (e) => {
   e.preventDefault();
   const name = document.getElementById("groupName").value.trim();
   if (!name) return;
+  const memberIds = [...document.querySelectorAll("#groupPeople input:checked")].map((i) => i.value).filter(Boolean);
   const groups = load(LS.groups, []);
-  groups.unshift({ id: Date.now(), name });
+  groups.unshift({ id: Date.now(), name, creatorId: meId, members: memberIds, admins: [meId] });
   save(LS.groups, groups);
   closeModal("groupModal");
   renderChats(chats);
@@ -881,11 +914,11 @@ async function storyMediaUrl(id) {
 }
 
 let storyType = "text";
-document.getElementById("addStoryBtn").addEventListener("click", () => {
+function openStoryComposer() {
   const msg = document.getElementById("storyMsg");
   if (msg) msg.textContent = "";
   openModal("storyModal");
-});
+}
 document.getElementById("closeStory").addEventListener("click", () => closeModal("storyModal"));
 document.querySelectorAll(".story-type").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -958,23 +991,49 @@ document.getElementById("storyForm").addEventListener("submit", async (e) => {
 
 async function renderStories() {
   const box = document.getElementById("storyList");
+  if (!box) return;
   box.innerHTML = "";
+  const add = document.createElement("button");
+  add.className = "status-item";
+  add.type = "button";
+  add.innerHTML = "<div class='status-ring'><i>+</i></div><small>My status</small>";
+  add.onclick = openStoryComposer;
+  box.appendChild(add);
   const list = load(LS.stories, []).filter((s) => !s.expires || s.expires > Date.now());
   for (const s of list) {
-    const row = document.createElement("div");
-    row.className = "row story-card";
-    row.innerHTML = "<div class='row-avatar'></div><div class='grow'><b></b><span></span></div>";
-    setAvatar(row.querySelector(".row-avatar"), s.image || "", s.name);
-    row.querySelector("b").textContent = s.name;
-    row.querySelector("span").textContent = (s.type || "text") + " · " + (s.text || "");
-    if (s.mediaId || s.music) {
-      const audio = document.createElement("audio");
-      audio.controls = true;
-      audio.style.width = "100%";
-      audio.src = s.music || await storyMediaUrl(s.mediaId);
-      row.querySelector(".grow").appendChild(audio);
-    }
-    box.appendChild(row);
+    const hrs = Math.max(1, Math.round((s.expires - Date.now()) / 36e5));
+    const btn = document.createElement("button");
+    btn.className = "status-item";
+    btn.type = "button";
+    btn.innerHTML = "<div class='status-ring'><i></i></div><small></small>";
+    btn.querySelector("small").textContent = (s.name || "Story").split(" ")[0];
+    const face = btn.querySelector("i");
+    if (s.image) { face.style.background = "url(" + s.image + ") center/cover"; face.textContent = ""; }
+    else face.textContent = (s.name || "K")[0];
+    btn.onclick = () => openStatus(s, hrs);
+    box.appendChild(btn);
+  }
+}
+
+async function openStatus(s, hrs) {
+  const view = document.getElementById("statusView");
+  view.hidden = false;
+  view.classList.remove("is-off");
+  document.getElementById("statusName").textContent = s.name || "Story";
+  document.getElementById("statusLeft").textContent = "Disappears in about " + (hrs || 24) + " hours";
+  const body = document.getElementById("statusBody");
+  body.innerHTML = "";
+  if (s.image) {
+    const img = document.createElement("img");
+    img.src = s.image;
+    body.appendChild(img);
+  } else body.textContent = s.text || "";
+  if (s.mediaId || s.music) {
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.autoplay = true;
+    audio.src = s.music || await storyMediaUrl(s.mediaId);
+    body.appendChild(audio);
   }
 }
 
@@ -1138,6 +1197,92 @@ function connectSocket() {
     refreshPresenceUi();
   });
   bindCallSocket(socket);
+}
+
+document.getElementById("closeStatus").addEventListener("click", () => {
+  const view = document.getElementById("statusView");
+  view.hidden = true;
+  view.classList.add("is-off");
+});
+document.getElementById("closeActions").addEventListener("click", () => closeModal("msgActions"));
+document.getElementById("actDelete").addEventListener("click", () => {
+  if (actionMsg && actionMsg.bubble) actionMsg.bubble.remove();
+  closeModal("msgActions");
+});
+document.getElementById("actSave").addEventListener("click", () => {
+  if (!actionMsg) return;
+  const m = actionMsg.m;
+  const a = document.createElement("a");
+  if (m.media) {
+    a.href = m.media;
+    a.download = (m.kind || "file") + (m.kind === "image" ? ".jpg" : m.kind === "voice" ? ".webm" : ".txt");
+  } else {
+    a.href = "data:text/plain," + encodeURIComponent(m.text || "");
+    a.download = "message.txt";
+  }
+  a.click();
+  closeModal("msgActions");
+});
+document.getElementById("actForward").addEventListener("click", () => {
+  closeModal("msgActions");
+  const box = document.getElementById("forwardList");
+  box.innerHTML = "";
+  const people = chats.map(peerFrom).concat(load(LS.contacts, []));
+  const seen = new Set();
+  people.forEach((p) => {
+    if (!p.id || seen.has(p.id)) return;
+    seen.add(p.id);
+    const row = document.createElement("button");
+    row.className = "row";
+    row.type = "button";
+    row.innerHTML = "<div class='grow'><b></b></div>";
+    row.querySelector("b").textContent = p.name;
+    row.onclick = async () => {
+      currentPeer = p;
+      await sendChat({ text: actionMsg.m.text, kind: actionMsg.m.kind || "text", media: actionMsg.m.media || "" });
+      closeModal("forwardModal");
+      openThread(p);
+    };
+    box.appendChild(row);
+  });
+  openModal("forwardModal");
+});
+document.getElementById("closeForward").addEventListener("click", () => closeModal("forwardModal"));
+document.getElementById("closeGroupManage").addEventListener("click", () => closeModal("groupManage"));
+
+function isGroupAdmin(g) {
+  return (g.admins || [g.creatorId]).map(String).includes(String(meId)) || String(g.creatorId) === String(meId);
+}
+
+function openGroupManage(g) {
+  document.getElementById("groupManageTitle").textContent = g.name;
+  const box = document.getElementById("groupMemberBox");
+  box.innerHTML = "";
+  if (!isGroupAdmin(g)) {
+    box.innerHTML = "<p class='hint'>Only group admins can edit members.</p>";
+    openModal("groupManage");
+    return;
+  }
+  load(LS.contacts, []).forEach((p) => {
+    const row = document.createElement("label");
+    const admin = (g.admins || []).map(String).includes(String(p.id));
+    row.innerHTML = "<input type='checkbox' class='mem' /><span></span><label class='adm'><input type='checkbox' class='adm-box' /> admin</label>";
+    row.querySelector(".mem").value = p.id;
+    row.querySelector(".mem").checked = (g.members || []).map(String).includes(String(p.id));
+    row.querySelector(".adm-box").value = p.id;
+    row.querySelector(".adm-box").checked = admin;
+    row.querySelector("span").textContent = p.name;
+    box.appendChild(row);
+  });
+  document.getElementById("saveGroupMembers").onclick = () => {
+    const members = [...box.querySelectorAll(".mem:checked")].map((i) => i.value);
+    const admins = [g.creatorId || meId, ...[...box.querySelectorAll(".adm-box:checked")].map((i) => i.value)];
+    const groups = load(LS.groups, []).map((x) => String(x.id) === String(g.id) ? { ...x, members, admins: [...new Set(admins)] } : x);
+    save(LS.groups, groups);
+    closeModal("groupManage");
+    renderChats(chats);
+  };
+  openModal("groupManage");
 }
 
 function hideKyroLoader() {
