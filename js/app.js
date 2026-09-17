@@ -237,7 +237,13 @@ function openThread(peer) {
   document.getElementById("peerName").textContent = peer.name;
   document.getElementById("peerMeta").textContent = presenceText(peer.id, peer.lastSeen);
   setAvatar(document.getElementById("peerAvatar"), peer.avatar, peer.name);
+  const typeLine = document.getElementById("typingLine");
+  if (typeLine) { typeLine.hidden = true; typeLine.textContent = ""; }
   loadMessages();
+  if (window.kyroSocket && window.kyroSocket.connected) {
+    window.kyroSocket.emit("message-seen", { otherUserId: peer.id, to: peer.id });
+  }
+  Kyro.request("/api/messages/seen/" + encodeURIComponent(peer.id), { method: "POST" }).catch(() => {});
 }
 
 document.getElementById("backChat").addEventListener("click", () => {
@@ -264,17 +270,60 @@ async function loadMessages() {
     return;
   }
   list.forEach((m) => {
-    const text = m.text || m.content || m.message || "";
-    const from = String(m.senderId || m.from || "");
-    const mine = from === meId || m.mine === true;
     const mid = String(m._id || "");
     if (mid) seenMessages.add(mid);
-    const bubble = document.createElement("div");
-    bubble.className = "bubble " + (mine ? "me" : "them");
-    bubble.textContent = text;
-    el.appendChild(bubble);
+    el.appendChild(makeBubble(m));
   });
   el.scrollTop = el.scrollHeight;
+}
+
+function tickHtml(m) {
+  if (!(String(m.senderId || "") === meId || m.mine)) return "";
+  if (m.seenAt) return '<i class="ticks seen">✓✓</i>';
+  if (m.deliveredAt) return '<i class="ticks">✓✓</i>';
+  return '<i class="ticks">✓</i>';
+}
+
+function makeBubble(m) {
+  const mine = String(m.senderId || m.from || "") === meId || m.mine === true;
+  const bubble = document.createElement("div");
+  bubble.className = "bubble " + (mine ? "me" : "them");
+  if (m._id) bubble.dataset.id = String(m._id);
+  const kind = m.kind || "text";
+  if (kind === "image" && m.media) {
+    const img = document.createElement("img");
+    img.src = m.media;
+    img.alt = "photo";
+    bubble.appendChild(img);
+  } else if (kind === "voice" && m.media) {
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.src = m.media;
+    bubble.appendChild(audio);
+  } else {
+    const t = document.createElement("span");
+    t.textContent = m.text || m.content || "";
+    bubble.appendChild(t);
+  }
+  bubble.insertAdjacentHTML("beforeend", tickHtml(m));
+  return bubble;
+}
+
+async function sendChat(payload, bubble) {
+  const body = {
+    receiverId: currentPeer.id,
+    to: currentPeer.id,
+    text: payload.text || payload.kind || "",
+    content: payload.text || payload.kind || "",
+    kind: payload.kind || "text",
+    media: payload.media || ""
+  };
+  if (window.kyroSocket && window.kyroSocket.connected) {
+    window.kyroSocket.emit("send-message", body);
+    return;
+  }
+  const saved = await Kyro.api.sendMessage(currentPeer.id, body.text);
+  if (saved && saved._ok === false && bubble) bubble.style.opacity = "0.55";
 }
 
 document.getElementById("composer").addEventListener("submit", async (e) => {
@@ -291,11 +340,7 @@ document.getElementById("composer").addEventListener("submit", async (e) => {
   box.appendChild(bubble);
   box.scrollTop = box.scrollHeight;
   if (String(currentPeer.id).startsWith("group:")) return;
-  if (window.kyroSocket && window.kyroSocket.connected) {
-    window.kyroSocket.emit("send-message", { receiverId: currentPeer.id, to: currentPeer.id, text, content: text });
-  }
-  const saved = await Kyro.api.sendMessage(currentPeer.id, text);
-  if (saved && saved._ok === false) bubble.style.opacity = "0.55";
+  await sendChat({ text, kind: "text" }, bubble);
 });
 
 function openModal(id) {
@@ -308,6 +353,71 @@ function closeModal(id) {
   el.hidden = true;
   el.classList.add("is-off");
 }
+
+const messageInput = document.getElementById("messageInput");
+let typingTimer = null;
+if (messageInput) {
+  messageInput.addEventListener("input", () => {
+    if (!(window.kyroSocket && currentPeer)) return;
+    window.kyroSocket.emit("typing", { to: currentPeer.id, receiverId: currentPeer.id, typing: true });
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => {
+      window.kyroSocket.emit("typing", { to: currentPeer.id, receiverId: currentPeer.id, typing: false });
+    }, 1200);
+  });
+}
+
+document.getElementById("attachBtn").addEventListener("click", () => document.getElementById("imageInput").click());
+document.getElementById("imageInput").addEventListener("change", async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!file || !currentPeer) return;
+  const media = await Kyro.fileToDataUrl(file);
+  const box = document.getElementById("messages");
+  if (box.querySelector(".hint")) box.innerHTML = "";
+  const bubble = makeBubble({ mine: true, senderId: meId, kind: "image", media, text: "photo" });
+  box.appendChild(bubble);
+  box.scrollTop = box.scrollHeight;
+  await sendChat({ kind: "image", media, text: "photo" }, bubble);
+});
+
+let recMedia = null;
+let recChunks = [];
+document.getElementById("recBtn").addEventListener("click", async () => {
+  if (!currentPeer) return;
+  if (recMedia) {
+    recMedia.stop();
+    return;
+  }
+  recMedia = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const rec = new MediaRecorder(recMedia);
+  recChunks = [];
+  rec.ondataavailable = (ev) => { if (ev.data.size) recChunks.push(ev.data); };
+  rec.onstop = async () => {
+    recMedia.getTracks().forEach((t) => t.stop());
+    recMedia = null;
+    if (window.kyroSocket && currentPeer) {
+      window.kyroSocket.emit("recording", { to: currentPeer.id, recording: false });
+    }
+    const blob = new Blob(recChunks, { type: "audio/webm" });
+    const media = await new Promise((resolve) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.readAsDataURL(blob);
+    });
+    const box = document.getElementById("messages");
+    if (box.querySelector(".hint")) box.innerHTML = "";
+    const bubble = makeBubble({ mine: true, senderId: meId, kind: "voice", media, text: "voice" });
+    box.appendChild(bubble);
+    await sendChat({ kind: "voice", media, text: "voice" }, bubble);
+    document.getElementById("recBtn").classList.remove("hot");
+  };
+  rec.start();
+  recMedia._rec = rec;
+  document.getElementById("recBtn").classList.add("hot");
+  if (window.kyroSocket) window.kyroSocket.emit("recording", { to: currentPeer.id, recording: true });
+  setTimeout(() => { if (rec.state === "recording") rec.stop(); }, 30000);
+});
 
 document.getElementById("plusBtn").addEventListener("click", () => openModal("plusModal"));
 document.getElementById("emptyPlus").addEventListener("click", () => openModal("plusModal"));
@@ -544,10 +654,20 @@ async function leaveAgora() {
   callChannel = "";
 }
 
+async function ensureAgoraSdk() {
+  if (window.AgoraRTC && AgoraRTC.createClient) return;
+  await new Promise((resolve, reject) => {
+    const el = document.createElement("script");
+    el.src = "https://cdn.jsdelivr.net/npm/agora-rtc-sdk-ng@4.20.2/AgoraRTC_N-4.20.2.js";
+    el.onload = resolve;
+    el.onerror = () => reject(new Error("Agora SDK did not load"));
+    document.head.appendChild(el);
+  });
+  if (!(window.AgoraRTC && AgoraRTC.createClient)) throw new Error("Agora SDK did not load");
+}
+
 async function joinAgoraCall(channel) {
-  if (typeof AgoraRTC !== "function" && typeof AgoraRTC !== "object") {
-    throw new Error("Agora SDK did not load");
-  }
+  await ensureAgoraSdk();
   const data = await Kyro.api.agoraToken(channel);
   if (!data._ok || !data.appId) {
     throw new Error(data.message || "Set AGORA_APP_ID on the backend.");
@@ -564,7 +684,7 @@ async function joinAgoraCall(channel) {
   await agoraClient.join(data.appId, data.channel, data.token || null, data.uid || null);
   agoraTrack = await AgoraRTC.createMicrophoneAudioTrack();
   await agoraClient.publish([agoraTrack]);
-  markLive();
+  document.getElementById("callStatus").textContent = "Waiting for the other person…";
 }
 
 function callChannelName(a, b) {
@@ -607,7 +727,7 @@ async function startCall(peer) {
     playRingtone();
     callChannel = callChannelName(meId, peer.id);
     window.kyroSocket.emit("call-user", { to: peer.id, name: meName, channel: callChannel });
-    await joinAgoraCall(callChannel);
+    document.getElementById("callStatus").textContent = "Ringing…";
   } catch (err) {
     document.getElementById("callStatus").textContent = err.message || "Microphone permission is needed.";
   }
@@ -617,6 +737,20 @@ document.getElementById("threadCall").addEventListener("click", () => {
   if (currentPeer) startCall(currentPeer);
 });
 document.getElementById("endCall").addEventListener("click", () => hangUp(true));
+document.getElementById("muteBtn").addEventListener("click", () => {
+  if (!agoraTrack) return;
+  const muted = agoraTrack.muted === true ? false : !agoraTrack.muted;
+  if (typeof agoraTrack.setMuted === "function") agoraTrack.setMuted(!agoraTrack.muted);
+  else agoraTrack.setEnabled && agoraTrack.setEnabled(agoraTrack.enabled === false);
+  document.getElementById("muteBtn").classList.toggle("on");
+});
+document.getElementById("speakerBtn").addEventListener("click", async () => {
+  const audio = document.getElementById("remoteAudio");
+  document.getElementById("speakerBtn").classList.toggle("on");
+  try {
+    if (audio && audio.setSinkId) await audio.setSinkId("default");
+  } catch (_) {}
+});
 document.getElementById("closeCallSheet").addEventListener("click", () => hangUp(true));
 document.getElementById("rejectCall").addEventListener("click", () => {
   if (callPeer && window.kyroSocket) window.kyroSocket.emit("call-reject", { to: callPeer.id });
@@ -913,18 +1047,16 @@ function applyIncoming(msg) {
   const mine = from === meId;
   const peerId = mine ? to : from;
   const text = msg.text || msg.content || msg.message || "";
-  if (!peerId || !text) return;
+  if (!peerId || (!text && !msg.media)) return;
 
   const open = currentPeer && String(currentPeer.id) === String(peerId);
   if (open) {
     const box = document.getElementById("messages");
     if (box.querySelector(".hint")) box.innerHTML = "";
     if (!mine) {
-      const bubble = document.createElement("div");
-      bubble.className = "bubble them";
-      bubble.textContent = text;
-      box.appendChild(bubble);
+      box.appendChild(makeBubble(msg));
       box.scrollTop = box.scrollHeight;
+      if (window.kyroSocket) window.kyroSocket.emit("message-seen", { otherUserId: peerId, to: peerId });
     }
     clearUnread(peerId);
   } else if (!mine) {
@@ -968,6 +1100,28 @@ function connectSocket() {
   socket.on("new-message", applyIncoming);
   socket.on("message", applyIncoming);
   socket.on("chat-updated", applyIncoming);
+  socket.on("typing", (data) => {
+    if (!currentPeer || String(data.userId) !== String(currentPeer.id)) return;
+    const line = document.getElementById("typingLine");
+    if (!line) return;
+    if (data.recording) {
+      line.hidden = false;
+      line.textContent = "recording…";
+    } else if (data.typing) {
+      line.hidden = false;
+      line.textContent = "typing…";
+    } else {
+      line.hidden = true;
+    }
+  });
+  socket.on("messages-seen", (data) => {
+    if (currentPeer && String(data.otherUserId) === String(currentPeer.id)) {
+      document.querySelectorAll(".bubble.me .ticks").forEach((t) => {
+        t.textContent = "✓✓";
+        t.classList.add("seen");
+      });
+    }
+  });
   socket.on("presence", (data) => {
     onlineIds.clear();
     (data.online || []).forEach((id) => onlineIds.add(String(id)));
