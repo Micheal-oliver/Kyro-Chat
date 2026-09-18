@@ -366,9 +366,11 @@ async function sendChat(payload, bubble) {
     ? (currentPeer.members || (load(LS.groups, []).find((g) => "group:" + g.id === currentPeer.id) || {}).members || [])
     : [currentPeer.id];
   let outText = payload.text || payload.kind || "";
-  if (payload.kind === "text" && window.KyroE2E && currentPeer.publicKey) {
-    outText = await KyroE2E.encryptText(outText, currentPeer.publicKey);
-  }
+  try {
+    if ((payload.kind || "text") === "text" && window.KyroE2E && currentPeer.publicKey) {
+      outText = await KyroE2E.encryptText(outText, currentPeer.publicKey);
+    }
+  } catch (_) {}
   const bodyBase = {
     text: outText,
     content: outText,
@@ -378,33 +380,32 @@ async function sendChat(payload, bubble) {
   if (String(currentPeer.id).startsWith("group:")) {
     saveGroupMessage(currentPeer.id, { ...bodyBase, senderId: meId, mine: true, at: Date.now() });
   }
-  if (window.kyroSocket && window.kyroSocket.connected) {
-    targets.forEach((id) => {
-      if (!id || id === meId) return;
-      window.kyroSocket.emit("send-message", { ...bodyBase, receiverId: id, to: id });
-    });
-    return;
+  for (const id of targets) {
+    if (!id || id === meId || String(id).startsWith("group:")) continue;
+    const saved = await Kyro.api.sendMessage(id, bodyBase);
+    if (saved && saved._ok === false && bubble) bubble.style.opacity = "0.55";
+    const packed = saved && (saved.message || saved);
+    if (window.kyroSocket && window.kyroSocket.connected) {
+      window.kyroSocket.emit("relay-message", packed && packed._id ? packed : { ...bodyBase, receiverId: id, to: id, senderId: meId });
+    }
   }
-  const first = targets[0];
-  if (!first) return;
-  const saved = await Kyro.api.sendMessage(first, bodyBase.text);
-  if (saved && saved._ok === false && bubble) bubble.style.opacity = "0.55";
 }
 
 document.getElementById("composer").addEventListener("submit", async (e) => {
   e.preventDefault();
+  e.stopPropagation();
   const input = document.getElementById("messageInput");
-  const text = input.value.trim();
-  if (!text || !currentPeer) return;
+  const text = (input && input.value ? input.value : "").trim();
+  if (!text) return;
+  if (!currentPeer || !currentPeer.id) return;
   input.value = "";
   const box = document.getElementById("messages");
-  if (box.querySelector(".hint")) box.innerHTML = "";
-  const bubble = document.createElement("div");
-  bubble.className = "bubble me";
-  bubble.textContent = text;
+  box.querySelectorAll(".hint").forEach((n) => n.remove());
+  const bubble = makeBubble({ mine: true, senderId: meId, text, kind: "text" });
   box.appendChild(bubble);
   box.scrollTop = box.scrollHeight;
-  await sendChat({ text, kind: "text" }, bubble);
+  try { await sendChat({ text, kind: "text" }, bubble); }
+  catch (_) { bubble.style.opacity = "0.6"; }
 });
 
 function openModal(id) {
@@ -759,7 +760,18 @@ async function joinAgoraCall(channel) {
   agoraClient.on("user-published", async (user, mediaType) => {
     await agoraClient.subscribe(user, mediaType);
     if (mediaType === "audio" && user.audioTrack) {
+      window.kyroRemoteAudio = user.audioTrack;
       user.audioTrack.play();
+      try {
+        const track = user.audioTrack.getMediaStreamTrack && user.audioTrack.getMediaStreamTrack();
+        if (track) {
+          const audio = document.getElementById("remoteAudio");
+          audio.srcObject = new MediaStream([track]);
+          audio.muted = false;
+          audio.volume = 1;
+          audio.play().catch(() => {});
+        }
+      } catch (_) {}
       markLive();
     }
     if (mediaType === "video" && user.videoTrack) {
@@ -854,11 +866,18 @@ document.getElementById("muteBtn").addEventListener("click", () => {
   document.getElementById("muteBtn").classList.toggle("on");
 });
 document.getElementById("speakerBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("speakerBtn");
+  const on = btn.classList.toggle("on");
   const audio = document.getElementById("remoteAudio");
-  document.getElementById("speakerBtn").classList.toggle("on");
-  try {
-    if (audio && audio.setSinkId) await audio.setSinkId("default");
-  } catch (_) {}
+  if (audio) {
+    audio.muted = false;
+    audio.volume = on ? 1 : 0.7;
+    audio.play().catch(() => {});
+  }
+  if (window.kyroRemoteAudio) {
+    window.kyroRemoteAudio.setVolume(on ? 100 : 70);
+    window.kyroRemoteAudio.play();
+  }
 });
 document.getElementById("closeCallSheet").addEventListener("click", () => hangUp(true));
 document.getElementById("rejectCall").addEventListener("click", () => {
@@ -918,13 +937,13 @@ function bindCallSocket(socket) {
   });
   socket.on("call-accepted", async () => {
     stopRingtone();
-    markLive();
+    document.getElementById("callStatus").textContent = "Connecting audio…";
     if (!callPeer) return;
-    if (!localStream) await getMic();
-    if (!peerConnection) await makePeerConnection(callPeer.id);
-    const offer = await peerConnection.createOffer({ offerToReceiveAudio: true });
-    await peerConnection.setLocalDescription(offer);
-    socket.emit("webrtc-offer", { to: callPeer.id, sdp: offer });
+    try {
+      await joinAgoraCall(callChannel || callChannelName(meId, callPeer.id));
+    } catch (err) {
+      document.getElementById("callStatus").textContent = err.message || "Call failed";
+    }
   });
   socket.on("webrtc-answer", async (data) => {
     if (!peerConnection || !data.sdp) return;
