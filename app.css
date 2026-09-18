@@ -665,3 +665,5 @@ html, body.app-body {
 .call-videos { width: min(92vw, 420px); position: relative; min-height: 180px; }
 #remoteVideo { width: 100%; border-radius: 16px; background: #000; min-height: 180px; }
 #localVideo { position: absolute; right: 8px; bottom: 8px; width: 96px; height: 128px; object-fit: cover; border-radius: 12px; background: #111; }
+
+.status-item.seen-story .status-ring { filter: grayscale(.4); opacity:.85; }
