@@ -142,7 +142,8 @@
     messages(otherUserId) {
       return request("/api/messages/" + encodeURIComponent(otherUserId));
     },
-    sendMessage(otherUserId, text) {
+    sendMessage(otherUserId, text, extra = {}) {
+      const payload = typeof text === "object" ? text : { text, ...extra };
       return request("/api/messages", {
         method: "POST",
         body: {
@@ -150,9 +151,11 @@
           receiverId: otherUserId,
           recipientId: otherUserId,
           otherUserId,
-          text,
-          content: text,
-          message: text
+          text: payload.text || payload.content || "",
+          content: payload.text || payload.content || "",
+          message: payload.text || "",
+          kind: payload.kind || "text",
+          media: payload.media || ""
         }
       });
     },
