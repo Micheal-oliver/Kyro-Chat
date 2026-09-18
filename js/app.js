@@ -177,6 +177,46 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
   location.replace("login.html");
 });
 
+const keyCache = {};
+const plainCache = JSON.parse(localStorage.getItem("kyro.plain") || "{}");
+function rememberPlain(id, text) {
+  if (!id || !text || String(text).startsWith("ENC1:")) return;
+  plainCache[String(id)] = text;
+  try { localStorage.setItem("kyro.plain", JSON.stringify(plainCache)); } catch (_) {}
+}
+async function pubFor(peer) {
+  const id = peer && (peer.id || peer);
+  if (peer && peer.publicKey) {
+    keyCache[String(id)] = peer.publicKey;
+    return peer.publicKey;
+  }
+  if (id && keyCache[String(id)]) return keyCache[String(id)];
+  if (!id) return "";
+  try {
+    const data = await Kyro.request("/api/users/id/" + encodeURIComponent(id));
+    const key = data && data.user && data.user.publicKey;
+    if (key) keyCache[String(id)] = key;
+    return key || "";
+  } catch (_) {
+    return "";
+  }
+}
+async function readText(raw, peer) {
+  const value = raw || "";
+  if (!String(value).startsWith("ENC1:")) return value;
+  if (peer && plainCache[String(peer.id || peer)]) {
+    /* keep trying decrypt for accuracy */
+  }
+  if (!window.KyroE2E) return plainCache[String(peer && (peer.id || peer))] || "Message";
+  const key = await pubFor(peer || {});
+  const out = await KyroE2E.decryptText(value, key);
+  if (out && out !== "[Encrypted message]" && out !== "Message") {
+    rememberPlain(peer && (peer.id || peer), out);
+    return out;
+  }
+  return plainCache[String(peer && (peer.id || peer))] || "Message";
+}
+
 function peerFrom(item) {
   const other = item.user || item.otherUser || item.participant || item;
   return {
@@ -202,7 +242,13 @@ function contactRow(peer, extra) {
     '<div class="row-avatar"><i class="online-dot"></i></div><div class="grow"><b></b><span></span><small class="presence"></small></div><div class="row-actions"></div>';
   setAvatar(row.querySelector(".row-avatar"), peer.avatar, peer.name);
   row.querySelector("b").textContent = peer.name;
-  row.querySelector("span").textContent = extra || peer.preview || peer.email || peer.phone || "";
+  const previewRaw = extra || peer.preview || peer.email || peer.phone || "";
+  row.querySelector("span").textContent = String(previewRaw).startsWith("ENC1:") ? (plainCache[String(peer.id)] || "Message") : previewRaw;
+  if (String(previewRaw).startsWith("ENC1:")) {
+    readText(previewRaw, peer).then((plain) => {
+      if (row.querySelector("span")) row.querySelector("span").textContent = plain;
+    });
+  }
   row.querySelector(".presence").textContent = presenceText(peer.id, peer.lastSeen);
   const count = unreadCount(peer.id);
   if (count > 0) {
@@ -338,10 +384,10 @@ function makeBubble(m) {
   } else {
     const t = document.createElement("span");
     const raw = m.text || m.content || "";
-    t.textContent = raw;
+    t.textContent = String(raw).startsWith("ENC1:") ? (plainCache[String(currentPeer && currentPeer.id)] || "Message") : raw;
     bubble.appendChild(t);
-    if (String(raw).startsWith("ENC1:") && window.KyroE2E) {
-      KyroE2E.decryptText(raw, currentPeer && currentPeer.publicKey).then((plain) => { t.textContent = plain; });
+    if (String(raw).startsWith("ENC1:")) {
+      readText(raw, currentPeer || { publicKey: m.publicKey }).then((plain) => { t.textContent = plain; });
     }
   }
   bubble.insertAdjacentHTML("beforeend", tickHtml(m));
@@ -398,6 +444,7 @@ document.getElementById("composer").addEventListener("submit", async (e) => {
   const text = (input && input.value ? input.value : "").trim();
   if (!text) return;
   if (!currentPeer || !currentPeer.id) return;
+  rememberPlain(currentPeer.id, text);
   input.value = "";
   const box = document.getElementById("messages");
   box.querySelectorAll(".hint").forEach((n) => n.remove());
@@ -1102,7 +1149,10 @@ async function renderStories() {
     btn.className = "status-item";
     btn.type = "button";
     btn.innerHTML = "<div class='status-ring'><i></i></div><small></small>";
-    btn.querySelector("small").textContent = (s.name || "Story").split(" ")[0];
+    const views = (s.views || []).length;
+    const likes = (s.likes || []).length;
+    btn.classList.toggle("seen-story", (s.views || []).includes(meId));
+    btn.querySelector("small").textContent = (s.name || "Story").split(" ")[0] + " · " + hrs + "h";
     const face = btn.querySelector("i");
     if (s.image) { face.style.background = "url(" + s.image + ") center/cover"; face.textContent = ""; }
     else face.textContent = (s.name || "K")[0];
@@ -1111,12 +1161,26 @@ async function renderStories() {
   }
 }
 
+function patchStory(story, fn) {
+  const list = load(LS.stories, []).map((x) => (x.at === story.at && x.name === story.name ? fn({ ...x }) : x));
+  save(LS.stories, list);
+  return list.find((x) => x.at === story.at && x.name === story.name) || story;
+}
+
 async function openStatus(s, hrs) {
+  s = patchStory(s, (st) => {
+    const views = st.views || [];
+    if (!views.includes(meId)) views.push(meId);
+    st.views = views;
+    return st;
+  });
   const view = document.getElementById("statusView");
   view.hidden = false;
   view.classList.remove("is-off");
   document.getElementById("statusName").textContent = s.name || "Story";
-  document.getElementById("statusLeft").textContent = "Disappears in about " + (hrs || 24) + " hours";
+  const leftHrs = Math.max(0, Math.round(((s.expires || Date.now()) - Date.now()) / 36e5));
+  document.getElementById("statusLeft").textContent =
+    leftHrs + " hours left · " + (s.views || []).length + " views · " + (s.likes || []).length + " likes";
   const body = document.getElementById("statusBody");
   body.innerHTML = "";
   if (s.image) {
@@ -1131,6 +1195,24 @@ async function openStatus(s, hrs) {
     audio.src = s.music || await storyMediaUrl(s.mediaId);
     body.appendChild(audio);
   }
+  const like = document.createElement("button");
+  like.className = "call-ctl";
+  like.type = "button";
+  like.textContent = (s.likes || []).includes(meId) ? "Liked" : "Like";
+  like.onclick = () => {
+    s = patchStory(s, (st) => {
+      const likes = st.likes || [];
+      if (likes.includes(meId)) st.likes = likes.filter((id) => id !== meId);
+      else likes.push(meId);
+      st.likes = st.likes || likes;
+      return st;
+    });
+    like.textContent = (s.likes || []).includes(meId) ? "Liked" : "Like";
+    document.getElementById("statusLeft").textContent =
+      leftHrs + " hours left · " + (s.views || []).length + " views · " + (s.likes || []).length + " likes";
+  };
+  body.appendChild(like);
+  renderStories();
 }
 
 document.getElementById("addCommunityBtn").addEventListener("click", () => {

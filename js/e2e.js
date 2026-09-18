@@ -48,15 +48,17 @@
     const key = await aesFrom(jwk);
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const data = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plain));
-    return "ENC1:" + JSON.stringify({ iv: bufToB64(iv), data: bufToB64(data) });
+    const mine = await loadPair();
+    return "ENC1:" + JSON.stringify({ iv: bufToB64(iv), data: bufToB64(data), pub: mine.pub });
   }
 
   async function decryptText(payload, theirPub) {
-    if (!payload || !String(payload).startsWith("ENC1:")) return payload;
-    if (!theirPub) return "[Encrypted message]";
+    if (!payload || !String(payload).startsWith("ENC1:")) return payload || "";
     try {
-      const jwk = typeof theirPub === "string" ? JSON.parse(theirPub) : theirPub;
       const pack = JSON.parse(payload.slice(5));
+      const rawPub = theirPub || pack.pub;
+      if (!rawPub) return "Message";
+      const jwk = typeof rawPub === "string" ? JSON.parse(rawPub) : rawPub;
       const key = await aesFrom(jwk);
       const out = await crypto.subtle.decrypt(
         { name: "AES-GCM", iv: new Uint8Array(b64ToBuf(pack.iv)) },
