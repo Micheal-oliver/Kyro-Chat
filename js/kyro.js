@@ -136,8 +136,8 @@
       return request("/api/calls/agora?channel=" + encodeURIComponent(channel));
     },
     lookup(query) {
-      const q = encodeURIComponent(query);
-      return request("/api/users/lookup?q=" + q + "&email=" + q + "&phone=" + q);
+      const q = encodeURIComponent(String(query).replace(/^@/, ""));
+      return request("/api/users/lookup?q=" + q + "&email=" + q + "&phone=" + q + "&username=" + q);
     },
     messages(otherUserId) {
       return request("/api/messages/" + encodeURIComponent(otherUserId));
@@ -155,12 +155,44 @@
           content: payload.text || payload.content || "",
           message: payload.text || "",
           kind: payload.kind || "text",
-          media: payload.media || ""
+          media: payload.media || "",
+          fileName: payload.fileName || "",
+          fileSize: payload.fileSize || 0
         }
       });
     },
     updateProfile(payload) {
       return request("/api/users/me", { method: "PATCH", body: payload });
+    },
+    messageMedia(id) {
+      return request("/api/messages/media/" + encodeURIComponent(id));
+    },
+    gallery(otherId) {
+      return request("/api/messages/gallery/" + encodeURIComponent(otherId));
+    },
+    blocked() {
+      return request("/api/users/blocked");
+    },
+    blockUser(id) {
+      return request("/api/users/block/" + encodeURIComponent(id), { method: "POST", body: {} });
+    },
+    unblockUser(id) {
+      return request("/api/users/block/" + encodeURIComponent(id), { method: "DELETE" });
+    },
+    reportUser(id, reason) {
+      return request("/api/users/report/" + encodeURIComponent(id), { method: "POST", body: { reason } });
+    },
+    editMessage(id, text) {
+      return request("/api/messages/" + encodeURIComponent(id), { method: "PATCH", body: { text } });
+    },
+    messageItem(id) {
+      return request("/api/messages/item/" + encodeURIComponent(id));
+    },
+    chatSettings(otherId) {
+      return request("/api/chats/settings/" + encodeURIComponent(otherId));
+    },
+    setChatSettings(otherId, seconds) {
+      return request("/api/chats/settings/" + encodeURIComponent(otherId), { method: "PUT", body: { seconds } });
     }
   };
 
