@@ -19,7 +19,7 @@ Animated introductory slideshow for Kyro Chat (HTML, CSS, vanilla JS).
 3. Groups & communities  
 4. Enhanced security  
 5. Seamless calls  
-6. Founders — Carl Tech & Jose Grid (frontend + backend repos)
+6. Founders — Vael Tech & Jose Grid (frontend + backend repos)
 7. Join today (Create account + Login)
 
 ## How it works
