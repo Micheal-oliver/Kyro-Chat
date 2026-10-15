@@ -1,0 +1,52 @@
+/* Kyro chat extras: drafts, multi-forward, stickers. Remove the <link> and <script> hooks to undo. */
+
+/* Drafts */
+.kx-draft-tag { color: #ff8f8f; font-style: normal; font-weight: 700; margin-right: 5px; }
+
+/* Forward sheet */
+.kx-fwd-search { width: 100%; margin: 4px 0 10px; height: 44px; border-radius: 14px; padding: 0 14px; font-size: 16px; }
+.kx-fwd-list { display: flex; flex-direction: column; gap: 2px; max-height: 52dvh; overflow: auto; }
+.kx-fwd-row { width: 100%; text-align: left; display: flex; align-items: center; gap: 12px; }
+.kx-fwd-row .row-avatar { flex: none; }
+.kx-fwd-row b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kx-tick {
+  flex: none; width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid var(--line, rgba(255, 255, 255, 0.3));
+  display: grid; place-items: center; font-size: 14px; font-weight: 800; color: transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.kx-fwd-row.on .kx-tick { background: linear-gradient(135deg, var(--accent-a, #9b6dff), var(--accent-b, #3ce7ff)); border-color: transparent; color: #070712; }
+.kx-fwd-send { width: 100%; margin-top: 12px; height: 48px; border-radius: 16px; font-weight: 700; color: #070712; background: linear-gradient(135deg, var(--accent-a, #9b6dff), var(--accent-b, #3ce7ff)); }
+.kx-fwd-send[disabled] { opacity: 0.4; }
+.kx-fwd-empty { padding: 18px 4px; color: var(--muted, #a8b0c8); font-size: 14px; }
+
+/* Sticker picker */
+.kx-pick {
+  height: 252px; display: flex; flex-direction: column; flex: none;
+  background: rgba(16, 16, 36, 0.94); backdrop-filter: blur(16px);
+  border-top: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+  animation: kxUp 0.2s ease;
+}
+.kx-pick[hidden] { display: none; }
+@keyframes kxUp { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+.kx-pick-tabs { display: flex; gap: 6px; padding: 8px 10px 4px; }
+.kx-pick-tabs button {
+  padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  color: var(--muted, #a8b0c8); transition: background 0.15s, color 0.15s;
+}
+.kx-pick-tabs button.on { color: var(--text, #fff); background: color-mix(in srgb, var(--accent-a, #9b6dff) 28%, transparent); }
+.kx-pick-grid {
+  flex: 1; overflow: auto; padding: 6px 10px 12px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; align-content: start;
+}
+.kx-pick-grid button { border-radius: 14px; padding: 4px; aspect-ratio: 1; display: grid; place-items: center; transition: transform 0.12s, background 0.15s; }
+.kx-pick-grid button:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.08); }
+.kx-pick-grid img { width: 100%; height: 100%; object-fit: contain; }
+.kx-pick-empty { grid-column: 1 / -1; padding: 24px 6px; text-align: center; color: var(--muted, #a8b0c8); font-size: 14px; }
+
+/* Sticker bubbles: no bubble chrome, the image is the message */
+.bubble.kx-sticker.me, .bubble.kx-sticker.them {
+  background: transparent; border: 0; box-shadow: none; padding: 0; color: var(--text, #fff);
+}
+.bubble.kx-sticker img { max-width: 150px; border-radius: 0; }
+.bubble.kx-sticker .mtime { display: block; text-align: right; padding: 0 4px; opacity: 0.7; }

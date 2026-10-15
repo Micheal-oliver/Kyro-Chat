@@ -1,0 +1,39 @@
+/* Kyro pins and polls. Remove the <link>/<script> hooks in app.html to undo. */
+
+/* Pinned banner */
+.kx-pin {
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px; flex: none;
+  background: rgba(16, 16, 36, 0.9); border-bottom: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+}
+.kx-pin[hidden] { display: none; }
+.kx-pin-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; }
+.kx-pin-bar { width: 3px; align-self: stretch; border-radius: 3px; background: linear-gradient(180deg, var(--accent-a, #9b6dff), var(--accent-b, #3ce7ff)); }
+.kx-pin-text { min-width: 0; display: flex; flex-direction: column; }
+.kx-pin-text small { font-size: 11px; font-weight: 700; color: var(--accent-b, #3ce7ff); }
+.kx-pin-text span { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text, #fff); }
+.kx-pin-x { width: 30px; height: 30px; border-radius: 50%; font-size: 18px; color: var(--muted, #a8b0c8); }
+
+/* Poll card inside a bubble */
+.bubble.kx-poll-bubble { width: min(300px, 82%); }
+.kx-poll h4 { font: 700 15px/1.3 "Outfit", sans-serif; margin: 0 0 8px; overflow-wrap: anywhere; }
+.kx-poll .kx-tag { display: block; font-size: 11px; opacity: 0.7; margin-bottom: 4px; }
+.kx-opt {
+  position: relative; display: block; width: 100%; text-align: left; overflow: hidden;
+  padding: 10px 12px; margin-top: 6px; border-radius: 12px; color: inherit;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.kx-opt i { position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: color-mix(in srgb, currentColor 20%, transparent); transition: width 0.4s ease; }
+.kx-opt > span { position: relative; display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.kx-opt b { font-weight: 700; white-space: nowrap; }
+.kx-opt.on { outline: 2px solid currentColor; outline-offset: -2px; }
+.kx-opt[disabled] { opacity: 0.75; }
+.kx-poll-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 12px; opacity: 0.8; gap: 8px; }
+.kx-poll-foot button { font-size: 12px; font-weight: 700; text-decoration: underline; color: inherit; }
+.kx-poll-wait .kx-opt { pointer-events: none; opacity: 0.6; }
+
+/* Poll form */
+.kx-poll-opts { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.kx-poll-opts input, #kxPollQ { width: 100%; height: 46px; border-radius: 14px; padding: 0 14px; font-size: 16px; }
+.kx-check { display: flex; align-items: center; gap: 10px; margin: 12px 0; font-size: 14px; }
+.kx-check input { width: 20px; height: 20px; }
+.kx-poll-add { font-size: 14px; font-weight: 600; color: var(--accent-b, #3ce7ff); padding: 6px 0; }

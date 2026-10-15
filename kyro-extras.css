@@ -1,0 +1,95 @@
+/* Kyro extras: additive polish layer. Loaded after app.css; remove the <link> to undo. */
+:root {
+  --accent-a: var(--purple, #9b6dff);
+  --accent-b: var(--cyan, #3ce7ff);
+}
+
+/* Accent-aware surfaces (match the old look by default) */
+.bubble.me {
+  background: linear-gradient(150deg, var(--accent-a), var(--accent-b));
+  box-shadow: 0 6px 18px -8px var(--accent-a);
+}
+.bubble.them { box-shadow: 0 4px 14px -10px rgba(0, 0, 0, 0.6); }
+.send-btn, .fab, .fab-inline {
+  background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+}
+.row.has-unread .row-time { color: var(--accent-b); }
+.bubble.hit-now { box-shadow: 0 0 0 2px var(--accent-b); }
+
+/* Message grouping: consecutive bubbles from the same side sit closer */
+.bubble.me + .bubble.me { margin-top: -5px; border-top-right-radius: 8px; }
+.bubble.them + .bubble.them { margin-top: -5px; border-top-left-radius: 8px; }
+
+/* Header: thin accent hairline instead of a flat border */
+.wa-top, .thread-head { position: relative; border-bottom-color: transparent; }
+.wa-top::after, .thread-head::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-a), var(--accent-b), transparent);
+  opacity: 0.55;
+}
+
+/* Tab bar: active tab gets a soft pill behind its icon */
+.tab .tab-ico {
+  width: 46px; height: 28px; border-radius: 14px;
+  transition: background 0.25s, transform 0.25s;
+}
+.tab.is-on { transform: none; }
+.tab.is-on .tab-ico {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-a) 30%, transparent), color-mix(in srgb, var(--accent-b) 24%, transparent));
+}
+.tab:active .tab-ico { transform: scale(0.92); }
+
+/* Composer: floating pill input */
+.composer input#messageInput { border-radius: 22px; }
+.composer { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+
+/* Press feedback and focus visibility */
+.row, .sheet-btn, .btn, .icon-round, .send-btn { transition: transform 0.12s ease, background 0.2s ease; }
+.row:active, .sheet-btn:active, .btn:active { transform: scale(0.985); }
+.icon-round:active, .send-btn:active { transform: scale(0.9); }
+:focus-visible { outline: 2px solid var(--accent-b); outline-offset: 2px; }
+
+/* Slim scrollbars */
+.messages, .list, .wa-main { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent-a) 45%, transparent) transparent; }
+.messages::-webkit-scrollbar { width: 6px; }
+.messages::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent-a) 45%, transparent); border-radius: 6px; }
+
+/* Offline banner */
+.kx-offline {
+  position: fixed; left: 50%; top: max(10px, env(safe-area-inset-top)); z-index: 90;
+  transform: translate(-50%, -140%); transition: transform 0.35s cubic-bezier(.2, .9, .3, 1.2);
+  padding: 9px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  background: #2b1d3a; color: #ffd9a8; border: 1px solid rgba(255, 200, 120, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.kx-offline.on { transform: translate(-50%, 0); }
+.kx-offline.back { background: #12322a; color: #b8ffe3; border-color: rgba(120, 255, 200, 0.4); }
+
+/* Look and install cards in Account */
+.kx-card {
+  margin-top: 16px; padding: 16px; border-radius: 20px;
+  background: var(--card, rgba(16, 16, 36, 0.72));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+}
+.kx-card h3 { font-family: "Outfit", sans-serif; font-size: 16px; margin-bottom: 4px; }
+.kx-card p { color: var(--muted, #a8b0c8); font-size: 13px; }
+.kx-swatches { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.kx-sw {
+  width: 46px; height: 46px; border-radius: 50%; position: relative;
+  background: linear-gradient(135deg, var(--a), var(--b));
+  box-shadow: 0 6px 16px -6px var(--a);
+  transition: transform 0.2s;
+}
+.kx-sw[aria-checked="true"] { transform: scale(1.12); outline: 2px solid var(--text, #fff); outline-offset: 3px; }
+.kx-sw span { position: absolute; top: 52px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--muted, #a8b0c8); }
+.kx-swatches { padding-bottom: 18px; }
+.kx-install { margin-top: 12px; width: 100%; }
+
+/* Emoji burst */
+.kx-burst { position: fixed; inset: 0; pointer-events: none; z-index: 95; overflow: hidden; }
+.kx-burst i { position: absolute; font-style: normal; will-change: transform, opacity; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kx-burst { display: none; }
+  .kx-offline { transition: none; }
+}
