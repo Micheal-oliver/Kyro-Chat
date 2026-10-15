@@ -666,6 +666,13 @@ function makeBubble(m) {
         if (bubble.parentNode) bubble.remove();
         return;
       }
+      if (w.type === "del") {
+        if (window.KyroMsg) KyroMsg.applyDelete(w.target, mine ? meId : String(m.senderId || m.from || ""));
+        bubble.dataset.react = "1";
+        bubble.style.display = "none";
+        if (bubble.parentNode) bubble.remove();
+        return;
+      }
       bubble._plain = w.text;
       bubble._replyPrefix = w.replyId !== undefined ? wireReply(w.replyId, w.quote, "") : "";
       const rich = window.Rich ? Rich.render(t, w.text) : (t.textContent = w.text, {});
@@ -711,11 +718,13 @@ function makeBubble(m) {
   bubble.insertAdjacentHTML("beforeend", tickHtml(m));
   bindMsgActions(bubble, m);
   flushPending(bubble);
+  if (window.KyroMsg) KyroMsg.decorate(bubble, m);
   return bubble;
 }
 
 const RX_REPLY = /^\u27e6r:([^|\u27e7]*)\|([^\u27e7]*)\u27e7([\s\S]*)$/;
 const RX_REACT = /^\u27e6x:([^|\u27e7]*)\|([^\u27e7]*)\u27e7$/;
+const RX_DEL = /^\u27e6d:([^|\u27e7]*)\u27e7$/;
 const REACT_EMOJIS = ["\ud83d\udc4d", "\u2764\ufe0f", "\ud83d\ude02", "\ud83d\ude2e", "\ud83d\ude22", "\ud83d\ude4f"];
 let pendingReacts = {};
 let replyTo = null;
@@ -724,6 +733,8 @@ function parseWire(t) {
   t = String(t == null ? "" : t);
   let m = t.match(RX_REACT);
   if (m) return { type: "react", target: m[1], emoji: m[2] };
+  m = t.match(RX_DEL);
+  if (m) return { type: "del", target: m[1] };
   m = t.match(RX_REPLY);
   if (m) return { type: "text", replyId: m[1], quote: m[2], text: m[3] };
   return { type: "text", text: t };
@@ -731,6 +742,7 @@ function parseWire(t) {
 function cleanPreview(t) {
   const w = parseWire(t);
   if (w.type === "react") return w.emoji ? "Reacted " + w.emoji : "Removed a reaction";
+  if (w.type === "del") return "\ud83d\udeab This message was deleted";
   return w.text || (w.replyId !== undefined ? "Reply" : "");
 }
 function wireReply(id, snip, text) {
@@ -1786,6 +1798,12 @@ async function applyIncoming(msg) {
   }
   if (!peerId || (!text && !msg.media)) return;
   const wired = parseWire(text);
+  if (wired.type === "del") {
+    if (window.KyroMsg) KyroMsg.applyDelete(wired.target, from);
+    if (!mine) upsertChatPreview(peerId, cleanPreview(text));
+    renderChats(chats);
+    return;
+  }
   if (wired.type === "react") {
     if (currentPeer && String(currentPeer.id) === String(peerId) && !mine) applyReaction(wired.target, from, wired.emoji);
     return;
