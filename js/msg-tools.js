@@ -34,29 +34,31 @@
     return true;
   }
 
-  function tombstone(bubble) {
-    if (bubble.classList.contains("kz-del")) return;
-    bubble.classList.add("kz-del");
+  /* real delete: the bubble is removed completely (no "message was deleted" leftover).
+     animate=true shrinks it away; animate=false (history loading) just hides it instantly. */
+  function tombstone(bubble, animate) {
+    if (bubble.dataset.deleted === "1") return;
     bubble.dataset.deleted = "1";
     bubble._plain = "";
     bubble._media = "";
     bubble._reacts = {};
-    Array.from(bubble.children).forEach((c) => {
-      if (!c.classList.contains("mtime") && !c.classList.contains("ticks") && !c.classList.contains("k-meta")) c.remove();
-    });
-    const t = document.createElement("span");
-    t.className = "kz-del-text";
-    t.textContent = bubble.classList.contains("me") ? "\u{1F6AB} You deleted this message" : "\u{1F6AB} This message was deleted";
-    bubble.insertBefore(t, bubble.firstChild);
+    if (!animate || !bubble.parentNode) { bubble.classList.add("kz-gone"); return; }
+    const h = bubble.offsetHeight;
+    bubble.style.height = h + "px";
+    bubble.style.setProperty("--kz-dir", bubble.classList.contains("me") ? "1" : "-1");
+    void bubble.offsetHeight;
+    bubble.classList.add("kz-vanishing");
+    setTimeout(() => { if (bubble.parentNode) bubble.remove(); }, 460);
   }
 
   const KyroMsg = {
     /* called by app.js for every bubble it builds */
     decorate(bubble, m) {
       bubble._sender = String((m && (m.senderId || m.from)) || "");
+      bubble._m = m;
       const id = bubble.dataset.id;
       if (!id) return;
-      if (delAll[id] && allowed(delAll[id], bubble)) tombstone(bubble);
+      if (delAll[id] && allowed(delAll[id], bubble)) tombstone(bubble, false);
       else if (delMe.has(id)) bubble.classList.add("kz-gone");
     },
     /* called by app.js when a "delete for everyone" control message arrives (live or from history) */
@@ -66,7 +68,7 @@
       delAll[id] = String(sender || "");
       saveAll();
       const b = findBubble(id);
-      if (b && allowed(delAll[id], b)) tombstone(b);
+      if (b && allowed(delAll[id], b)) tombstone(b, true);
     },
     shareImage,
     shareText
@@ -152,10 +154,24 @@
     const cur = typeof actionMsg !== "undefined" ? actionMsg : null;
     if (!cur || !cur.bubble || !sheet) return;
     const b = cur.bubble;
-    const gone = b.classList.contains("kz-del");
+    const gone = b.dataset.deleted === "1";
     const hasImg = !!b.querySelector(":scope > img");
     actCopy.hidden = gone || !b._plain;
     actShare.hidden = gone || !navigator.share || !(hasImg || b._plain);
+    const old = $(".kz-preview", sheet);
+    if (old) old.remove();
+    if (!gone) {
+      const pv = document.createElement("div");
+      pv.className = "kz-preview" + (b.classList.contains("me") ? " me" : "");
+      const c = b.cloneNode(true);
+      c.removeAttribute("id");
+      c.classList.remove("kz-vanishing");
+      c.style.cssText = "";
+      c.querySelectorAll("video, audio").forEach((n) => n.remove());
+      pv.appendChild(c);
+      const rr = $("#reactRow", sheet);
+      if (rr) rr.after(pv);
+    }
     const row = $("#reactRow", sheet);
     if (row) row.style.display = gone ? "none" : "";
     ["#actReply", "#actStar", "#actForward", "#actSave"].forEach((q) => { const n = $(q, sheet); if (n) n.hidden = gone; });
@@ -184,7 +200,24 @@
     '<button class="sheet-btn ghost" id="kzDelCancel" type="button">Cancel</button>' +
     "</div>";
   document.body.appendChild(del);
-  let target = null;
+  let targets = [];
+  const close = () => { closeModal("kzDelModal"); targets = []; };
+
+  /* one place that asks "for me / for everyone" for one or many bubbles */
+  function askDelete(list) {
+    targets = (list || []).filter((b) => b && b.dataset.deleted !== "1");
+    if (!targets.length) return;
+    const n = targets.length;
+    const canAll = targets.every((b) => b.classList.contains("me") && !!b.dataset.id);
+    $("#kzDelAll").hidden = !canAll;
+    $("#kzDelAll").textContent = n > 1 ? "Delete " + n + " for everyone" : "Delete for everyone";
+    $("#kzDelMe").textContent = n > 1 ? "Delete " + n + " for me" : "Delete for me";
+    $("#kzDelHint").textContent = canAll
+      ? "\"Delete for everyone\" removes it from the chat for you and the other person."
+      : "This removes it from your phone only.";
+    openModal("kzDelModal");
+  }
+  KyroMsg.askDelete = askDelete;
 
   if (sheet) {
     /* capture phase so we run before app.js's own Delete handler */
@@ -195,43 +228,52 @@
       e.preventDefault();
       const cur = typeof actionMsg !== "undefined" ? actionMsg : null;
       closeModal("msgActions");
-      if (!cur || !cur.bubble) return;
-      target = cur.bubble;
-      const canAll = target.classList.contains("me") && !!target.dataset.id && !target.classList.contains("kz-del");
-      $("#kzDelAll").hidden = !canAll;
-      $("#kzDelHint").textContent = canAll
-        ? "\"Delete for everyone\" replaces it with \"This message was deleted\" for everyone in the chat."
-        : "This removes it from your phone only.";
-      openModal("kzDelModal");
+      if (cur && cur.bubble) askDelete([cur.bubble]);
     }, true);
   }
 
-  $("#kzDelCancel").addEventListener("click", () => { closeModal("kzDelModal"); target = null; });
-  del.addEventListener("click", (e) => { if (e.target === del) { closeModal("kzDelModal"); target = null; } });
+  $("#kzDelCancel").addEventListener("click", close);
+  del.addEventListener("click", (e) => { if (e.target === del) close(); });
 
   $("#kzDelMe").addEventListener("click", () => {
-    const b = target;
-    closeModal("kzDelModal");
-    target = null;
-    if (!b) return;
-    const id = b.dataset.id;
-    if (id) { delMe.add(id); saveMe(); b.classList.add("kz-gone"); }
-    else b.remove();
+    const list = targets;
+    close();
+    list.forEach((b) => {
+      const id = b.dataset.id;
+      if (id) {
+        delMe.add(id); saveMe();
+        try { if (window.Kyro && Kyro.request) Kyro.request("/api/messages/" + encodeURIComponent(id) + "?scope=me", { method: "DELETE" }).catch(() => {}); } catch (_) {}
+      }
+      tombstone(b, true);
+    });
   });
 
   $("#kzDelAll").addEventListener("click", async () => {
-    const b = target;
-    closeModal("kzDelModal");
-    target = null;
-    if (!b || !b.dataset.id) return;
-    const id = b.dataset.id;
-    KyroMsg.applyDelete(id, typeof meId !== "undefined" ? String(meId) : "");
-    try {
-      await sendChat({ text: "\u27e6d:" + id + "\u27e7", kind: "text" });
-    } catch (_) {
-      toastMsg("Deleted here, but couldn't reach the server to tell the others. Try again later.");
+    const list = targets.filter((b) => b.dataset.id);
+    close();
+    for (const b of list) {
+      const id = b.dataset.id;
+      KyroMsg.applyDelete(id, typeof meId !== "undefined" ? String(meId) : "");
+      let ok = false;
+      try {
+        const r = await Kyro.request("/api/messages/" + encodeURIComponent(id), { method: "DELETE" });
+        ok = !!(r && r._ok);
+      } catch (_) {}
+      if (ok) continue;
+      /* server could not delete it (old server or offline): fall back to the hidden delete message */
+      try { await sendChat({ text: "\u27e6d:" + id + "\u27e7", kind: "text" }); }
+      catch (_) { toastMsg("Deleted here, but couldn't reach the server to tell the others. Try again later."); }
     }
   });
+
+  /* live: the other person deleted a message for everyone (or you did on another device) */
+  let hooked = null;
+  setInterval(() => {
+    const s = window.kyroSocket;
+    if (!s || s === hooked || typeof s.on !== "function") return;
+    hooked = s;
+    s.on("message-deleted", (d) => { if (d && d.id) KyroMsg.applyDelete(d.id, d.from || ""); });
+  }, 1500);
 
   /* ---------- Text size setting ---------- */
   const SIZES = [["small", "Small", 0.9], ["default", "Default", 1], ["large", "Large", 1.15], ["huge", "Huge", 1.3]];
