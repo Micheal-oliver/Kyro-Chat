@@ -1,0 +1,52 @@
+/* Kyro voice recorder bar (pairs with js/voice-pro.js). Remove the <link> to undo. */
+.composer { position: relative; }
+.composer.vp-on > :not(.vp-bar) { display: none !important; }
+
+.vp-bar {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px;
+  padding: 6px 6px 6px 6px; border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 70, 100, 0.16), rgba(155, 109, 255, 0.18));
+  border: 1px solid rgba(255, 107, 129, 0.35);
+  box-shadow: 0 8px 30px rgba(255, 70, 100, 0.2);
+  animation: vpIn 0.3s cubic-bezier(.2, .9, .3, 1.2) both;
+}
+.vp-bar.vp-out { animation: vpOut 0.2s ease forwards; }
+@keyframes vpIn { from { opacity: 0; transform: translateY(14px) scale(0.94); } to { opacity: 1; transform: none; } }
+@keyframes vpOut { to { opacity: 0; transform: translateY(10px) scale(0.96); } }
+
+.vp-cancel, .vp-send {
+  flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; border: 0; padding: 0;
+  display: grid; place-items: center; cursor: pointer;
+  transition: transform 0.2s cubic-bezier(.2, 1.4, .4, 1), background 0.2s ease, box-shadow 0.2s ease;
+}
+.vp-cancel { background: rgba(255, 255, 255, 0.08); color: #ff6b81; }
+.vp-cancel:hover { background: rgba(255, 70, 100, 0.25); transform: rotate(-8deg) scale(1.08); }
+.vp-send { background: linear-gradient(135deg, var(--accent-a, #9b6dff), var(--accent-b, #3ce7ff)); color: #fff; box-shadow: 0 6px 20px rgba(120, 80, 255, 0.45); }
+.vp-send:hover { transform: scale(1.1); }
+.vp-cancel:active, .vp-send:active { transform: scale(0.9); }
+
+.vp-dot { flex: 0 0 auto; width: 11px; height: 11px; border-radius: 50%; background: #ff4664; animation: vpPulse 1.1s ease-in-out infinite; }
+@keyframes vpPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 70, 100, 0.7); transform: scale(1); } 50% { box-shadow: 0 0 0 9px rgba(255, 70, 100, 0); transform: scale(0.82); } }
+
+.vp-time { flex: 0 0 auto; min-width: 38px; font-weight: 700; font-variant-numeric: tabular-nums; color: #fff; }
+
+.vp-wave { flex: 1 1 auto; min-width: 0; height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 2px; overflow: hidden; }
+.vp-wave i {
+  flex: 1 1 0; min-width: 2px; max-width: 5px; height: 100%; border-radius: 3px;
+  background: linear-gradient(180deg, var(--accent-b, #3ce7ff), var(--accent-a, #9b6dff));
+  transform: scaleY(0.08); transform-origin: center; transition: transform 0.08s linear;
+}
+
+#recBtn.hot { color: #ff4664; }
+
+html[data-theme="light"] .vp-time { color: #1b1840; }
+html[data-theme="light"] .vp-cancel { background: rgba(30, 20, 80, 0.07); }
+
+@media (max-width: 360px) {
+  .vp-bar { gap: 6px; }
+  .vp-wave i:nth-child(odd) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vp-bar, .vp-dot { animation: none; }
+  .vp-wave i { transition: none; }
+}

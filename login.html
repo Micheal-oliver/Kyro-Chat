@@ -4,18 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login — Kyro Chat</title>
+  <meta name="theme-color" content="#070712" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="images/icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="kyro-redesign.css" />
   <link rel="stylesheet" href="kyro-design.css" />
   <link rel="stylesheet" href="auth.css" />
+  <link rel="stylesheet" href="kyro-auth.css" />
 </head>
-<body>
+<body class="k-auth">
   <div class="ambient">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
   </div>
+  <div class="k-bubbles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <main class="auth">
     <form class="auth-card" id="loginForm">
       <a class="back" href="index.html">← Back to welcome</a>
@@ -27,6 +32,7 @@
         <input id="email" name="email" type="email" autocomplete="email" required />
         <label for="password">Password</label>
         <input id="password" name="password" type="password" autocomplete="current-password" required />
+        <a class="k-forgot" href="forgot.html">Forgot password?</a>
         <p class="form-error" id="loginError"></p>
         <button class="btn btn-primary" type="submit" style="width:100%">Continue</button>
       </section>
@@ -42,9 +48,12 @@
       </section>
 
       <p class="note">New here? <a href="signup.html">Create account</a></p>
+      <div class="k-trust"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Protected with a one-time code</span></div>
     </form>
   </main>
   <script src="js/kyro.js"></script>
   <script src="js/login.js"></script>
+  <script src="js/auth-fx.js"></script>
+  <script src="js/install.js"></script>
 </body>
 </html>

@@ -1,0 +1,85 @@
+/* Kyro round video messages (pairs with js/round-video.js). Remove the <link> to undo. */
+
+/* ---- circle in the chat ---- */
+.bubble.rv-bubble {
+  background: transparent !important; box-shadow: none !important; border: 0 !important;
+  padding: 2px 2px 4px !important; width: auto; max-width: none;
+}
+.rv-wrap {
+  position: relative; display: block; padding: 0; border: 0; background: none; cursor: pointer;
+  width: min(62vw, 230px); aspect-ratio: 1; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.25s cubic-bezier(.2, 1.4, .4, 1);
+  animation: rvPop 0.45s cubic-bezier(.2, 1.3, .4, 1) both;
+}
+.rv-wrap:active { transform: scale(0.96); }
+@keyframes rvPop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+.rv-circle {
+  position: absolute; inset: 4%; border-radius: 50%; overflow: hidden; display: block;
+  background: linear-gradient(135deg, var(--accent-a, #9b6dff), var(--accent-b, #3ce7ff));
+  box-shadow: 0 10px 30px rgba(120, 80, 255, 0.4);
+}
+.rv-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.rv-poster { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(8, 8, 24, 0.55); }
+.rv-play {
+  width: 56px; height: 56px; border-radius: 50%; background: rgba(255, 255, 255, 0.92); position: relative; display: block;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); animation: rvBeat 1.8s ease-in-out infinite;
+}
+.rv-play::after { content: ""; position: absolute; left: 22px; top: 17px; border-style: solid; border-width: 11px 0 11px 18px; border-color: transparent transparent transparent #5a35d6; }
+@keyframes rvBeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+.rv-wrap.rv-ready .rv-poster { display: none; }
+.rv-wrap.rv-loading .rv-play { animation: rvSpin 0.8s linear infinite; opacity: 0.6; }
+@keyframes rvSpin { to { transform: rotate(360deg); } }
+.rv-wrap.rv-paused::after {
+  content: ""; position: absolute; inset: 4%; border-radius: 50%; background: rgba(0, 0, 0, 0.45);
+}
+.rv-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); pointer-events: none; }
+.rv-ring circle { fill: none; stroke-width: 2.6; stroke-linecap: round; }
+.rv-ring-bg { stroke: rgba(255, 255, 255, 0.14); }
+.rv-ring-fg { stroke: #fff; transition: stroke-dashoffset 0.25s linear; filter: drop-shadow(0 0 4px rgba(60, 231, 255, 0.8)); }
+.rv-wrap:not(.rv-sound) .rv-ring-fg { opacity: 0; }
+
+/* ---- record button ---- */
+.rv-btn { transition: transform 0.2s cubic-bezier(.2, 1.4, .4, 1), color 0.2s ease; }
+.rv-btn:hover { transform: scale(1.12) rotate(-8deg); color: var(--accent-b, #3ce7ff); }
+.rv-btn:active { transform: scale(0.9); }
+
+/* ---- full screen recorder ---- */
+.rv-overlay {
+  position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+  padding: 20px calc(20px + env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) calc(20px + env(safe-area-inset-left, 0px));
+  background: radial-gradient(circle at 50% 30%, rgba(60, 40, 120, 0.92), rgba(6, 5, 18, 0.97) 70%);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  opacity: 0; transition: opacity 0.25s ease;
+}
+.rv-overlay.on { opacity: 1; }
+.rv-stage { position: relative; width: min(78vw, 56dvh, 340px); aspect-ratio: 1; transform: scale(0.7); transition: transform 0.4s cubic-bezier(.2, 1.3, .4, 1); }
+.rv-overlay.on .rv-stage { transform: none; }
+.rv-live { position: absolute; inset: 3.5%; border-radius: 50%; overflow: hidden; background: #000; box-shadow: 0 0 60px rgba(120, 80, 255, 0.5); }
+.rv-overlay.recording .rv-live { box-shadow: 0 0 70px rgba(255, 70, 100, 0.6); }
+.rv-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rv-preview.mirror { transform: scaleX(-1); }
+.rv-overlay .rv-ring-fg { stroke: #ff4664; transition: none; filter: drop-shadow(0 0 5px rgba(255, 70, 100, 0.8)); }
+.rv-timer {
+  position: absolute; left: 50%; bottom: 9%; transform: translateX(-50%); padding: 4px 12px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55); color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px;
+}
+.rv-timer::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: #ff4664; animation: rvBlink 1s ease-in-out infinite; }
+@keyframes rvBlink { 50% { opacity: 0.25; } }
+.rv-hint { margin: 0; color: #cfd2ee; font-size: 14px; text-align: center; }
+.rv-controls { display: flex; align-items: center; justify-content: center; gap: 30px; }
+.rv-c {
+  width: 54px; height: 54px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.16); padding: 0; cursor: pointer;
+  display: grid; place-items: center; color: #fff; font-size: 30px; line-height: 1; background: rgba(255, 255, 255, 0.1);
+  transition: transform 0.2s cubic-bezier(.2, 1.4, .4, 1), background 0.2s ease, opacity 0.2s ease;
+}
+.rv-c:hover { background: rgba(255, 255, 255, 0.2); transform: scale(1.08); }
+.rv-c:active { transform: scale(0.9); }
+.rv-c:disabled { opacity: 0.3; pointer-events: none; }
+.rv-go { width: 76px; height: 76px; background: rgba(255, 255, 255, 0.14); border: 3px solid #fff; }
+.rv-go i { display: block; width: 52px; height: 52px; border-radius: 50%; background: #ff4664; transition: border-radius 0.25s ease, transform 0.25s ease; }
+.rv-overlay.recording .rv-go i { border-radius: 14px; transform: scale(0.55); }
+
+@media (max-height: 560px) { .rv-overlay { flex-direction: row; gap: 28px; } .rv-controls { flex-direction: column; } .rv-hint { display: none; } .rv-stage { width: min(60dvh, 300px); } }
+@media (prefers-reduced-motion: reduce) {
+  .rv-wrap, .rv-play, .rv-timer::before, .rv-stage, .rv-overlay { animation: none; transition: none; }
+}

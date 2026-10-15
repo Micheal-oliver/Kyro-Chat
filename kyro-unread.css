@@ -1,0 +1,17 @@
+/* Kyro unread divider. Additive. Remove the <link> and <script> hook lines in app.html to undo. */
+.ks-unread {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--k-ink, var(--cyan, #3ce7ff));
+}
+.ks-unread::before, .ks-unread::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--k-acc, #9b6dff) 45%, transparent);
+}

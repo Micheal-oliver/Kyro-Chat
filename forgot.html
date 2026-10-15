@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset password — Kyro Chat</title>
+  <meta name="theme-color" content="#070712" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="images/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="kyro-redesign.css" />
+  <link rel="stylesheet" href="kyro-design.css" />
+  <link rel="stylesheet" href="auth.css" />
+  <link rel="stylesheet" href="kyro-auth.css" />
+</head>
+<body class="k-auth">
+  <div class="ambient">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+  </div>
+  <div class="k-bubbles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <main class="auth">
+    <form class="auth-card" id="forgotForm" novalidate>
+      <a class="back" href="login.html">← Back to login</a>
+      <div class="steps" id="stepDots"></div>
+
+      <section class="panel is-on" data-step="email">
+        <h1>Reset your password</h1>
+        <p>Enter your account email and we’ll send you a 6-digit code.</p>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required />
+        <p class="form-error" id="emailError"></p>
+        <button class="btn btn-primary" type="submit" style="width:100%">Send reset code</button>
+      </section>
+
+      <section class="panel" data-step="reset">
+        <h1>Enter the code</h1>
+        <p>We sent a code to <strong id="otpEmail"></strong>. It expires in 10 minutes.</p>
+        <label for="otp">Reset code</label>
+        <input id="otp" name="otp" inputmode="numeric" maxlength="8" autocomplete="one-time-code" />
+        <label for="newPassword">New password</label>
+        <input id="newPassword" name="newPassword" type="password" autocomplete="new-password" minlength="8" />
+        <label for="confirmPassword">Confirm new password</label>
+        <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" minlength="8" />
+        <p class="form-error" id="resetError"></p>
+        <button class="btn btn-primary" type="submit" style="width:100%">Update password</button>
+        <button class="btn btn-ghost" type="button" id="resendBtn" style="width:100%">Resend code</button>
+      </section>
+
+      <section class="panel" data-step="done">
+        <div class="k-done" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+        </div>
+        <h1>Password updated</h1>
+        <p>Your new password is ready. Log in to get back to your chats.</p>
+        <a class="btn btn-primary" href="login.html" style="width:100%">Go to login</a>
+      </section>
+
+      <p class="note">Remembered it? <a href="login.html">Log in</a></p>
+      <div class="k-trust"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Protected with a one-time code</span></div>
+    </form>
+  </main>
+  <script src="js/kyro.js"></script>
+  <script src="js/forgot.js"></script>
+  <script src="js/auth-fx.js"></script>
+  <script src="js/install.js"></script>
+</body>
+</html>

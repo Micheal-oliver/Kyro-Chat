@@ -1,0 +1,73 @@
+/* Kyro multi-select (pairs with js/select-mode.js). Remove the <link> to undo. */
+
+/* "Select" tile in the message menu */
+#msgActions #kzSelectBtn { --kz-ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpolyline points=%229 11 12 14 22 4%22/%3E%3Cpath d=%22M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11%22/%3E%3C/svg%3E"); --kz-tint: #ffd166; order: 9; }
+
+/* picked messages */
+.bubble { position: relative; }
+.bubble.kz-sel {
+  box-shadow: 0 0 0 2px var(--accent-b, #3ce7ff), 0 0 26px rgba(60, 231, 255, 0.45) !important;
+  transform: scale(0.985);
+  transition: box-shadow 0.2s ease, transform 0.25s cubic-bezier(.2, 1.4, .4, 1);
+}
+.bubble.kz-sel::after {
+  content: ""; position: absolute; top: -9px; width: 22px; height: 22px; border-radius: 50%; z-index: 3;
+  background: linear-gradient(135deg, var(--accent-a, #9b6dff), var(--accent-b, #3ce7ff));
+  border: 2px solid #0b0a1e;
+  box-shadow: 0 4px 12px rgba(60, 231, 255, 0.5);
+  animation: kzsPop 0.35s cubic-bezier(.2, 1.6, .4, 1) both;
+}
+.bubble.me.kz-sel::after { left: -9px; }
+.bubble.them.kz-sel::after { right: -9px; }
+.bubble.kz-sel::before {
+  content: ""; position: absolute; top: -4px; width: 7px; height: 12px; z-index: 4; pointer-events: none;
+  border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg) scale(0.9);
+}
+.bubble.me.kz-sel::before { left: 3px; }
+.bubble.them.kz-sel::before { right: 3px; }
+@keyframes kzsPop { from { transform: scale(0); } to { transform: scale(1); } }
+body.kz-selecting .bubble:not(.kz-sel) { opacity: 0.8; transition: opacity 0.2s ease; }
+body.kz-selecting .messages { user-select: none; -webkit-user-select: none; }
+
+/* top bar */
+.kzs-bar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 12; box-sizing: border-box;
+  display: flex; align-items: center; gap: 2px;
+  background: linear-gradient(180deg, rgba(32, 26, 70, 0.97), rgba(18, 15, 44, 0.97));
+  border-bottom: 1px solid rgba(155, 109, 255, 0.35);
+  box-shadow: 0 10px 34px rgba(120, 80, 255, 0.28);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  transform: translateY(-100%); opacity: 0;
+  transition: transform 0.3s cubic-bezier(.2, .9, .3, 1.1), opacity 0.2s ease;
+}
+.kzs-bar[hidden] { display: none; }
+.kzs-bar.kzs-on { transform: none; opacity: 1; }
+.kzs-count { display: flex; align-items: baseline; gap: 6px; margin-left: 4px; color: #fff; white-space: nowrap; }
+.kzs-count b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 14px; }
+.kzs-count small { font-size: 13px; color: #b9bce0; }
+.kzs-sp { flex: 1 1 auto; }
+.kzs-b {
+  flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+  display: grid; place-items: center; background: transparent; color: #eceaff;
+  transition: transform 0.2s cubic-bezier(.2, 1.4, .4, 1), background 0.2s ease, color 0.2s ease;
+}
+.kzs-b[hidden] { display: none; }
+.kzs-b:hover { background: rgba(155, 109, 255, 0.25); color: var(--accent-b, #3ce7ff); transform: scale(1.1); }
+.kzs-b:active { transform: scale(0.88); }
+.kzs-del:hover { background: rgba(255, 70, 100, 0.25); color: #ff6b81; }
+.kzs-bar.kzs-on .kzs-b { animation: kzsIn 0.35s cubic-bezier(.2, 1.3, .4, 1) both; }
+.kzs-bar.kzs-on .kzs-b:nth-of-type(2) { animation-delay: 0.04s; }
+.kzs-bar.kzs-on .kzs-b:nth-of-type(3) { animation-delay: 0.08s; }
+.kzs-bar.kzs-on .kzs-b:nth-of-type(4) { animation-delay: 0.12s; }
+.kzs-bar.kzs-on .kzs-b:nth-of-type(5) { animation-delay: 0.16s; }
+.kzs-bar.kzs-on .kzs-b:nth-of-type(6) { animation-delay: 0.2s; }
+.kzs-bar.kzs-on .kzs-b:nth-of-type(7) { animation-delay: 0.24s; }
+@keyframes kzsIn { from { opacity: 0; transform: translateY(-8px) scale(0.7); } to { opacity: 1; transform: none; } }
+
+html[data-theme="light"] .kzs-bar { background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(240, 236, 255, 0.97)); }
+html[data-theme="light"] .kzs-count, html[data-theme="light"] .kzs-b { color: #1b1840; }
+
+@media (max-width: 380px) { .kzs-b { width: 36px; height: 36px; } .kzs-count small { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .kzs-bar, .kzs-bar.kzs-on .kzs-b, .bubble.kz-sel, .bubble.kz-sel::after { animation: none; transition: none; }
+}

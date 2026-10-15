@@ -239,3 +239,24 @@ Files: `js/msg-tools.js`, `kyro-msgtools.css`, `js/photo-editor.js`, `kyro-edito
 - **Photo editor** — choose a photo and an editor opens: draw (7 colours, brush size), add text (tap to place, drag to move, tap to edit), crop (drag corners), rotate, undo, reset. Send sends the edited picture. GIFs skip the editor
 - **GIF search** — the GIF button next to the stickers button. Trending plus search, sent as a normal image message. Needs a free GIPHY key pasted into `js/gif-config.js` (Google closed Tenor's API in June 2026, so GIPHY is used)
 
+
+## Frontend updates merged (voice, round video, multi-select, real delete)
+
+Files: `js/voice-pro.js`, `kyro-voice.css`, `js/round-video.js`, `kyro-round.css`, `js/select-mode.js`, `kyro-select.css`, plus updated `js/msg-tools.js` and `kyro-msgtools.css` (hook lines in `app.html`). Remove the hook lines to undo. No backend change.
+
+## Kyro Plus: Schedule send, Saved messages, Reminders and commands
+
+Files: `js/kyro-plus.js`, `kyro-plus.css` (two hook lines at the end of the lists in `app.html`). Remove them to undo. No backend change: everything is stored on this device (per account) and messages go out through the app's own `sendChat()`, so encryption, groups and disappearing timers behave exactly as normal.
+
+- **Schedule send** — type a message, then tap the clock button that appears next to Send (or hold Send). Pick In 1 hour / Tonight / Tomorrow, or any date and time. A bar above the composer shows what is waiting in this chat. Settings > Scheduled & reminders lists everything with Send now, Edit and Delete. Works in one-to-one chats and groups. Scheduled messages go out while Kyro is open; if the time passed while it was closed they are sent the next time you open Kyro
+- **Saved messages** — a private space just for you, pinned at the top of the chat list (also in Settings). Long-press any message and tap **Add to Saved** (text, photos and small voice notes). You can also type notes, add photos, search, copy, share, set a reminder from a note, or jump back to the original chat. Photos are shrunk to keep storage small; videos and files are saved as a label only
+- **Reminders** — long-press a message and tap **Remind me**, or use `/remind`. A pop-up appears with Open chat, Done and Snooze 10 min (plus a system notification if the tab is in the background and you allowed notifications)
+- **Commands** — type `/` in the message box to see them:
+  - `/recap` — instant catch-up card for the open chat: what you missed since you last replied, questions to answer, mentions of you, plans and times, links, photos/voice notes, and what people talked about. Tap an item to jump to it. `/recap 50` uses the last 50 messages, `/recap today` uses today. Built on your device from the messages on screen, never sent anywhere. Save recap stores it in Saved messages
+  - `/remind 20m call mum` · `/remind 9pm pay rent` · `/remind tomorrow 8am gym`
+  - `/schedule 9pm happy birthday!` · `/schedule tomorrow 8am good morning` (if the time isn't understood, the time picker opens)
+  - `/saved buy milk` saves a note; `/saved` alone opens Saved messages
+  - `/commands` lists them. Aliases: `/tldr`, `/catchup`, `/later`, `/note`
+  - Commands are handled locally and never sent as a message. Anything that isn't one of these still works as before (quick replies on `/` are unchanged)
+- **Time words understood** — `20m`, `in 2 hours`, `1.5h`, `3 days`, `9pm`, `9:30am`, `21:00`, `noon`, `midnight`, `tonight`, `tomorrow 8am`, `friday 6pm`
+- **Limits** — up to 50 scheduled messages and 50 reminders. If the browser's storage is full, Saved tells you instead of failing silently

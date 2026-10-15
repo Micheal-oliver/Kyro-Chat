@@ -1,0 +1,488 @@
+/* ==========================================================================
+   Kyro auth skin — login.html + signup.html
+   VISUAL ONLY. Loaded after every other stylesheet. To revert, delete the
+   <link href="kyro-auth.css"> line (and the two decorative blocks) in the HTML.
+   No ids, names, classes used by js/login.js or js/signup.js are changed.
+
+   Idea: the card is a "live signal". Its edge is a quiet violet→cyan line;
+   the moment you focus a field the light sweeps around it. Everything else
+   stays calm so that one moment is the memorable one.
+   ========================================================================== */
+
+@property --k-ang {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+body.k-auth {
+  --a-violet: #9b6dff;
+  --a-cyan: #3ce7ff;
+  --a-pink: #ff6bd6;
+  --a-night: #070712;
+  --a-panel: #0d0d22;
+  --a-field: #14142d;
+  --a-field-hi: #1b1b3a;
+  --a-ink: #f4f6ff;
+  --a-soft: #a9b0cb;
+  --a-line: rgba(255, 255, 255, 0.08);
+  --a-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --a-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  font-family: "DM Sans", system-ui, sans-serif;
+  background:
+    radial-gradient(900px 520px at 12% -8%, rgba(155, 109, 255, 0.28), transparent 60%),
+    radial-gradient(760px 520px at 100% 108%, rgba(60, 231, 255, 0.2), transparent 60%),
+    var(--a-night);
+  overflow-x: hidden;
+}
+
+/* ---------- Background: calmer orbs + drifting message bubbles ---------- */
+body.k-auth .ambient .orb { opacity: 0.22; filter: blur(90px); }
+body.k-auth .ambient::after {
+  /* faint dot grid so the dark never feels flat */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.2px);
+  background-size: 26px 26px;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%);
+  mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%);
+}
+
+.k-bubbles {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.k-bubbles i {
+  position: absolute;
+  bottom: -90px;
+  width: var(--w, 74px);
+  height: calc(var(--w, 74px) * 0.62);
+  border-radius: 18px 18px 18px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(155, 109, 255, 0.16), rgba(60, 231, 255, 0.07));
+  opacity: 0;
+  animation: kBubble var(--d, 22s) linear var(--s, 0s) infinite;
+}
+.k-bubbles i:nth-child(even) { border-radius: 18px 18px 5px 18px; }
+.k-bubbles i:nth-child(1) { left: 6%;  --w: 84px; --d: 24s; --s: -3s; }
+.k-bubbles i:nth-child(2) { left: 24%; --w: 52px; --d: 30s; --s: -14s; }
+.k-bubbles i:nth-child(3) { left: 46%; --w: 96px; --d: 27s; --s: -8s; }
+.k-bubbles i:nth-child(4) { left: 68%; --w: 58px; --d: 32s; --s: -20s; }
+.k-bubbles i:nth-child(5) { left: 84%; --w: 78px; --d: 26s; --s: -11s; }
+.k-bubbles i:nth-child(6) { left: 36%; --w: 44px; --d: 36s; --s: -26s; }
+@keyframes kBubble {
+  0%   { transform: translateY(0) rotate(-4deg); opacity: 0; }
+  12%  { opacity: 0.9; }
+  85%  { opacity: 0.7; }
+  100% { transform: translateY(-118vh) rotate(5deg); opacity: 0; }
+}
+
+/* ---------- Layout ---------- */
+body.k-auth main.auth {
+  padding: max(20px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+}
+
+/* ---------- The card ---------- */
+body.k-auth main.auth form.auth-card {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 30px 26px 24px;
+  border-radius: 32px;
+  border: 1.5px solid transparent;
+  /* panel fill + a conic border that sweeps when a field is focused */
+  background:
+    linear-gradient(var(--a-panel), var(--a-panel)) padding-box,
+    conic-gradient(from var(--k-ang), rgba(155, 109, 255, 0.55), rgba(60, 231, 255, 0.55), rgba(255, 107, 214, 0.35), rgba(155, 109, 255, 0.55)) border-box;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    0 50px 90px -44px rgba(0, 0, 0, 0.95),
+    0 0 90px -30px rgba(155, 109, 255, 0.5);
+  animation: kCardIn 0.8s var(--a-ease) backwards;
+}
+body.k-auth main.auth form.auth-card:focus-within {
+  animation: kCardIn 0.8s var(--a-ease) backwards, kSweep 3.2s linear infinite;
+}
+@keyframes kSweep { to { --k-ang: 360deg; } }
+@keyframes kCardIn {
+  from { opacity: 0; transform: translateY(28px) scale(0.965); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Logo mark — your existing images/logo.jpg, framed tighter on the K */
+body.k-auth main.auth form.auth-card::before {
+  content: "";
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 0 0 20px;
+  border-radius: 20px;
+  background: url("images/logo.jpg") 50% 34% / 175% auto no-repeat, #070712;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 18px 38px -12px rgba(155, 109, 255, 0.85);
+}
+
+/* Back link becomes a small pill */
+body.k-auth .auth-card .back {
+  position: absolute;
+  top: 28px;
+  right: 24px;
+  margin: 0;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--a-soft);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--a-line);
+  transition: color 0.2s, background 0.2s, transform 0.25s var(--a-spring);
+}
+body.k-auth .auth-card .back:hover { color: #fff; background: rgba(255, 255, 255, 0.1); transform: translateX(-2px); }
+
+/* ---------- Type ---------- */
+body.k-auth .auth-card h1 {
+  font-family: "Outfit", sans-serif;
+  font-size: clamp(32px, 9vw, 38px);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  margin: 0 0 8px;
+  background: linear-gradient(120deg, #fff 30%, #cfc2ff 70%, #aaf3ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+body.k-auth .auth-card p {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--a-soft);
+  margin: 0 0 22px;
+}
+body.k-auth .auth-card p strong { color: #fff; font-weight: 600; overflow-wrap: anywhere; }
+
+/* ---------- Fields ---------- */
+body.k-auth .auth-card label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #c9cfe6;
+  margin: 16px 0 7px;
+}
+body.k-auth .auth-card input:not([type="file"]) {
+  height: 56px;
+  margin-bottom: 0;
+  padding: 0 16px 0 48px;
+  border-radius: 18px;
+  border: 1.5px solid transparent;
+  background-color: var(--a-field);
+  background-repeat: no-repeat;
+  background-position: 16px 50%;
+  background-size: 20px;
+  color: var(--a-ink);
+  font-size: 16px;
+  transition: border-color 0.2s, background-color 0.2s, box-shadow 0.25s;
+}
+body.k-auth .auth-card input::placeholder { color: #6b7194; }
+body.k-auth .auth-card input:hover { background-color: var(--a-field-hi); }
+body.k-auth .auth-card input:focus,
+body.k-auth .auth-card input:focus-visible {
+  outline: none; /* replaced by the cyan border + glow below */
+  border-color: rgba(60, 231, 255, 0.75);
+  background-color: var(--a-field-hi);
+  box-shadow: 0 0 0 4px rgba(60, 231, 255, 0.13), 0 12px 30px -16px rgba(60, 231, 255, 0.7);
+}
+/* Chrome autofill shouldn't turn the field white */
+body.k-auth .auth-card input:-webkit-autofill {
+  -webkit-text-fill-color: #fff;
+  -webkit-box-shadow: 0 0 0 60px var(--a-field-hi) inset;
+  caret-color: #fff;
+}
+
+/* Field icons (pure CSS, keyed on the existing ids) */
+body.k-auth #email {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239b6dff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='3'/%3E%3Cpath d='m4 7 8 6 8-6'/%3E%3C/svg%3E");
+}
+body.k-auth #password {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239b6dff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='11' width='16' height='10' rx='3'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E");
+}
+body.k-auth #fullName {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239b6dff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21c1-4 4.5-6 8-6s7 2 8 6'/%3E%3C/svg%3E");
+}
+body.k-auth #phone {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239b6dff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='7' y='2.5' width='10' height='19' rx='3'/%3E%3Cpath d='M11 18.5h2'/%3E%3C/svg%3E");
+}
+body.k-auth #dob {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239b6dff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='5' width='17' height='15.5' rx='3'/%3E%3Cpath d='M8 3v4M16 3v4M3.5 10h17'/%3E%3C/svg%3E");
+  color-scheme: dark;
+}
+body.k-auth #dob::-webkit-calendar-picker-indicator { opacity: 0.6; cursor: pointer; }
+
+/* One-time code: big, centered, easy to read and paste */
+body.k-auth #otp {
+  height: 68px;
+  padding: 0 16px;
+  text-align: center;
+  font-family: "Outfit", sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  background-image: none;
+}
+body.k-auth #otp::placeholder { letter-spacing: 0.2em; }
+
+/* Password show/hide (added by js/auth-fx.js; wraps the input, keeps its id) */
+.k-field { position: relative; }
+.k-field input { padding-right: 52px !important; }
+.k-eye {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #8f96b8;
+  transition: color 0.2s, background 0.2s;
+}
+.k-eye:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
+.k-eye svg { width: 20px; height: 20px; }
+.k-eye .k-eye-off { display: none; }
+.k-eye[aria-pressed="true"] .k-eye-on { display: none; }
+.k-eye[aria-pressed="true"] .k-eye-off { display: block; }
+
+/* ---------- Messages ---------- */
+body.k-auth .auth-card .age-line {
+  display: inline-flex;
+  margin: 10px 0 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--a-cyan);
+  background: rgba(60, 231, 255, 0.08);
+  border: 1px solid rgba(60, 231, 255, 0.18);
+}
+body.k-auth .auth-card .form-error {
+  min-height: 0;
+  margin: 12px 0 0;
+  padding: 11px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #ffb3c0;
+  background: rgba(255, 90, 120, 0.1);
+  border: 1px solid rgba(255, 90, 120, 0.25);
+  animation: kShake 0.4s var(--a-ease);
+}
+body.k-auth .auth-card .form-error:empty { display: none; }
+@keyframes kShake {
+  20% { transform: translateX(-6px); }
+  45% { transform: translateX(5px); }
+  70% { transform: translateX(-3px); }
+}
+
+/* ---------- Buttons ---------- */
+body.k-auth .auth-card .btn {
+  position: relative;
+  overflow: hidden;
+  height: 56px;
+  margin-top: 20px;
+  border-radius: 18px;
+  font-family: "Outfit", sans-serif;
+  font-size: 16.5px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+body.k-auth .auth-card .btn-primary {
+  color: #07071a;
+  background: linear-gradient(120deg, #a47bff 0%, #6fb2ff 55%, #3ce7ff 100%);
+  box-shadow: 0 18px 36px -16px rgba(120, 130, 255, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition: transform 0.25s var(--a-spring), box-shadow 0.25s, filter 0.2s;
+}
+body.k-auth .auth-card .btn-primary::after {
+  /* light streak on hover */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.5) 50%, transparent 65%);
+  transform: translateX(-120%);
+  transition: transform 0.7s var(--a-ease);
+}
+body.k-auth .auth-card .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 24px 40px -16px rgba(100, 160, 255, 1), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+body.k-auth .auth-card .btn-primary:hover::after { transform: translateX(120%); }
+body.k-auth .auth-card .btn-primary:active { transform: scale(0.97); }
+body.k-auth .auth-card .btn-primary:disabled {
+  /* the existing JS disables the button while it talks to the server */
+  cursor: progress;
+  filter: saturate(0.7) brightness(0.9);
+  transform: none;
+  animation: kBusy 1.1s ease-in-out infinite;
+}
+@keyframes kBusy { 50% { opacity: 0.65; } }
+
+body.k-auth .auth-card .btn-ghost {
+  height: 52px;
+  margin-top: 10px !important;
+  color: var(--a-soft);
+  background: transparent;
+  border: 1.5px solid var(--a-line);
+  transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.25s var(--a-spring);
+}
+body.k-auth .auth-card .btn-ghost:hover { color: #fff; border-color: rgba(155, 109, 255, 0.55); background: rgba(155, 109, 255, 0.08); }
+body.k-auth .auth-card .btn-ghost:active { transform: scale(0.97); }
+
+/* ---------- Steps (signup) ---------- */
+body.k-auth .auth-card .steps { gap: 8px; margin: 4px 0 22px; padding-right: 96px; }
+body.k-auth .auth-card .step-dot {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: background 0.4s var(--a-ease), box-shadow 0.4s;
+}
+body.k-auth .auth-card .step-dot.is-on {
+  background: linear-gradient(90deg, var(--a-violet), var(--a-cyan));
+  box-shadow: 0 0 14px rgba(60, 231, 255, 0.55);
+}
+
+/* ---------- Panel switch ---------- */
+body.k-auth .auth-card .panel.is-on { animation: kPanel 0.5s var(--a-ease) backwards; }
+@keyframes kPanel {
+  from { opacity: 0; transform: translateX(26px); filter: blur(4px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+
+/* ---------- Profile photo ---------- */
+body.k-auth .auth-card .avatar-pick { margin: 8px 0 6px; gap: 14px; color: var(--a-soft); font-size: 14px; font-weight: 600; }
+body.k-auth .auth-card .avatar-preview {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  font-size: 44px;
+  font-weight: 300;
+  color: var(--a-cyan);
+  border: 0;
+  background-color: var(--a-field);
+  background-size: cover;
+  background-position: center;
+  transition: transform 0.35s var(--a-spring);
+}
+body.k-auth .auth-card .avatar-preview::before {
+  /* gradient ring */
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--a-violet), var(--a-cyan), var(--a-pink), var(--a-violet));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  animation: kSpin 9s linear infinite;
+}
+body.k-auth .auth-card .avatar-pick:hover .avatar-preview { transform: scale(1.05) rotate(-2deg); }
+@keyframes kSpin { to { transform: rotate(360deg); } }
+
+/* ---------- Footer link + trust line ---------- */
+body.k-auth .auth-card .note {
+  margin: 22px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--a-line);
+  font-size: 14.5px;
+  color: var(--a-soft);
+}
+body.k-auth .auth-card .note a {
+  color: #fff;
+  font-weight: 700;
+  background: linear-gradient(120deg, var(--a-violet), var(--a-cyan)) 0 100% / 100% 2px no-repeat;
+  padding-bottom: 2px;
+  transition: background-size 0.25s var(--a-ease), color 0.2s;
+}
+body.k-auth .auth-card .note a:hover { background-size: 100% 100%; color: #07071a; }
+
+.k-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  color: #7f86a8;
+}
+.k-trust svg { width: 14px; height: 14px; color: var(--a-cyan); flex: none; }
+
+/* ---------- Forgot password page + login link + install button ---------- */
+body.k-auth #newPassword,
+body.k-auth #confirmPassword {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239b6dff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='11' width='16' height='10' rx='3'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E");
+}
+body.k-auth .auth-card .k-forgot {
+  display: block;
+  width: fit-content;
+  margin: 12px 0 0 auto;
+  padding: 4px 2px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--a-soft);
+  transition: color 0.2s;
+}
+body.k-auth .auth-card .k-forgot:hover { color: var(--a-cyan); }
+
+.k-done {
+  width: 72px;
+  height: 72px;
+  margin: 2px 0 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #07071a;
+  background: linear-gradient(135deg, var(--a-violet), var(--a-cyan));
+  box-shadow: 0 18px 40px -12px rgba(60, 231, 255, 0.7);
+  animation: kPop 0.6s var(--a-spring) backwards;
+}
+.k-done svg { width: 36px; height: 36px; }
+@keyframes kPop { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+body.k-auth .auth-card a.btn { text-decoration: none; }
+
+.k-install {
+  display: block;
+  margin: 12px auto 0;
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--a-cyan);
+  background: rgba(60, 231, 255, 0.08);
+  border: 1px solid rgba(60, 231, 255, 0.22);
+  transition: background 0.2s, transform 0.25s var(--a-spring);
+}
+.k-install[hidden] { display: none; }
+.k-install:hover { background: rgba(60, 231, 255, 0.15); }
+.k-install:active { transform: scale(0.96); }
+
+/* ---------- Focus, small screens, motion ---------- */
+body.k-auth a:focus-visible,
+body.k-auth button:focus-visible { outline: 2px solid var(--a-cyan); outline-offset: 3px; }
+
+@media (max-width: 380px) {
+  body.k-auth main.auth form.auth-card { padding: 26px 18px 20px; border-radius: 28px; }
+  body.k-auth .auth-card .back { top: 24px; right: 18px; }
+  body.k-auth #otp { font-size: 26px; letter-spacing: 0.3em; text-indent: 0.3em; }
+}
+@media (max-height: 640px) {
+  .k-bubbles { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-bubbles i,
+  body.k-auth main.auth form.auth-card,
+  body.k-auth main.auth form.auth-card:focus-within,
+  body.k-auth .auth-card .panel.is-on,
+  body.k-auth .auth-card .avatar-preview::before,
+  body.k-auth .auth-card .btn-primary:disabled,
+  body.k-auth .auth-card .k-done,
+  body.k-auth .auth-card .form-error { animation: none !important; }
+  body.k-auth .auth-card .btn-primary::after { display: none; }
+}
