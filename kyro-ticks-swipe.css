@@ -1,0 +1,40 @@
+/* Kyro signature: drawn message ticks and swipe actions on chats. Colours unchanged. Remove the hooks in app.html to undo. */
+
+/* ============ Ticks ============ */
+.bubble .ticks {
+  font-size: 0; display: inline-block; width: 20px; height: 12px; margin-left: 6px; opacity: 1; vertical-align: -1px;
+  color: rgba(7, 7, 18, 0.5); transition: color 0.35s ease, filter 0.35s ease;
+  --kx-single: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 14'%3E%3Cpath d='M5 7.8 9.2 12 18.5 2.6' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --kx-double: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 14'%3E%3Cpath d='M1.8 7.8 6 12 15 2.8M9.4 10.6 10.8 12 20 2.8' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --kx-clock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Ccircle cx='7' cy='7' r='5.4' fill='none' stroke='black' stroke-width='1.7'/%3E%3Cpath d='M7 4v3.2l2 1.3' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.bubble .ticks::before { content: ""; display: block; width: 100%; height: 100%; background: currentColor; -webkit-mask: var(--kx-single) center / contain no-repeat; mask: var(--kx-single) center / contain no-repeat; }
+.bubble .ticks[data-s="sending"]::before { -webkit-mask-image: var(--kx-clock); mask-image: var(--kx-clock); -webkit-mask-size: 12px; mask-size: 12px; animation: kxTickWait 1.4s ease-in-out infinite; }
+.bubble .ticks[data-s="delivered"]::before, .bubble .ticks[data-s="seen"]::before { -webkit-mask-image: var(--kx-double); mask-image: var(--kx-double); }
+.bubble .ticks[data-s="seen"] { color: #fff; filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.85)); }
+.bubble .ticks.kx-pop::before { animation: kxTickPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes kxTickPop { 0% { transform: scale(0.4); opacity: 0; } 55% { transform: scale(1.35); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes kxTickWait { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+/* ============ Swipe actions ============ */
+#chatList { position: relative; }
+#chatList .row[data-peer] { touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.row.kx-swiping { background: var(--bg-2, #0e0e1f) !important; position: relative; z-index: 1; will-change: transform; }
+.kx-swipe-bg { position: absolute; left: 14px; right: 14px; border-radius: 24px; overflow: hidden; z-index: 0; }
+.kx-sw-left {
+  position: absolute; inset: 0 auto 0 0; width: var(--w, 0px); display: flex; align-items: center; justify-content: flex-start; padding-left: 24px; overflow: hidden; color: #fff;
+  background: linear-gradient(90deg, var(--purple), color-mix(in srgb, var(--purple) 55%, var(--cyan)));
+}
+.kx-sw-right { position: absolute; inset: 0 0 0 auto; width: var(--w, 0px); display: flex; overflow: hidden; }
+.kx-sw-right button { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 700; }
+.kx-sw-mute { background: color-mix(in srgb, var(--text, #fff) 16%, var(--bg-2, #0e0e1f)); color: var(--text, #fff); }
+.kx-sw-arch { background: var(--cyan); color: #070712; }
+.kx-sw-lbl { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; white-space: nowrap; transform: scale(0.85); opacity: 0.6; transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s; }
+.kx-swipe-bg.go-pin .kx-sw-left .kx-sw-lbl, .kx-swipe-bg.go-arch .kx-sw-arch { transform: scale(1.12); }
+.kx-swipe-bg.go-pin .kx-sw-lbl { opacity: 1; }
+.kx-swipe-bg.go-arch .kx-sw-mute { display: none; }
+.kx-sw-lbl svg, .kx-sw-right svg { flex: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble .ticks[data-s="sending"]::before, .bubble .ticks.kx-pop::before { animation: none; }
+}

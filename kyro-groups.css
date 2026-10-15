@@ -1,0 +1,22 @@
+/* Kyro groups: easier member picking and group info. Remove the hooks in app.html to undo. */
+.kx-people-count { margin: 10px 2px 2px; font-size: 13px; color: var(--muted, #a8b0c8); }
+.kx-people-empty { padding: 18px 4px; color: var(--muted, #a8b0c8); font-size: 14px; line-height: 1.45; }
+.kx-people-empty button { margin-top: 12px; width: 100%; }
+.people-pick { max-height: 42dvh; overflow: auto; margin-bottom: 6px; scrollbar-width: none; }
+.people-pick::-webkit-scrollbar { display: none; }
+.people-pick label.kx-fwd-row { margin: 0 0 6px; cursor: pointer; }
+
+/* Manage members: person row + admin switch */
+.kx-mem-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.kx-mem-row .kx-mem { flex: 1; min-width: 0; margin: 0; }
+.kx-adm { flex: none; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted, #a8b0c8); padding: 8px 10px; border-radius: 12px; background: color-mix(in srgb, var(--text, #fff) 6%, transparent); margin: 0; }
+.kx-adm input { width: 16px; height: 16px; }
+
+/* Group info sheet */
+.kx-ginfo-list { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; max-height: 46dvh; overflow: auto; }
+.kx-ginfo-row { display: flex; align-items: center; gap: 12px; padding: 8px 4px; }
+.kx-ginfo-row b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kx-ginfo-row small { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--purple, #9b6dff) 24%, transparent); color: var(--text, #fff); }
+
+/* The small button on group rows */
+.row .mini.kx-addmem { display: grid; place-items: center; }

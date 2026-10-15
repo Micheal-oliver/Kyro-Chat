@@ -1,0 +1,47 @@
+/* Kyro polish: feel and motion on top of the redesign. Colours unchanged. Remove the hooks in app.html to undo. */
+
+/* Soft moving glow behind the chat list (same purple and cyan) */
+.kx-ambient { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.kx-ambient i { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.55; will-change: transform; }
+.kx-ambient i:nth-child(1) { width: 320px; height: 320px; top: -90px; left: -110px; background: color-mix(in srgb, var(--purple) 34%, transparent); animation: kxDrift1 20s ease-in-out infinite; }
+.kx-ambient i:nth-child(2) { width: 300px; height: 300px; bottom: 6%; right: -120px; background: color-mix(in srgb, var(--cyan) 20%, transparent); animation: kxDrift2 24s ease-in-out infinite; }
+@keyframes kxDrift1 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(60px, 70px); } }
+@keyframes kxDrift2 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-70px, -60px); } }
+
+/* Header shrinks smoothly once you scroll */
+.wa-top { transition: min-height 0.3s var(--kx-ease), padding 0.3s var(--kx-ease), box-shadow 0.3s; }
+.wa-top h1 { transition: font-size 0.3s var(--kx-ease); }
+.wa-top .mini-logo { transition: width 0.3s var(--kx-ease), height 0.3s var(--kx-ease); }
+.wa-top.kx-compact { min-height: 58px; padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: 8px; box-shadow: 0 16px 34px -22px rgba(0, 0, 0, 0.95); }
+.wa-top.kx-compact h1 { font-size: 21px; }
+.wa-top.kx-compact .mini-logo { width: 34px; height: 34px; }
+.wa-top.kx-compact .role-pill { display: none; }
+
+/* Mic turns into Send when you type */
+.composer:not(.kx-typing) .send-btn { display: none; }
+.composer.kx-typing #recBtn { display: none; }
+.composer.kx-typing .send-btn { animation: kxPopIn 0.35s var(--kx-spring); }
+@keyframes kxPopIn { from { transform: scale(0.4) rotate(-20deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Pull to refresh */
+.tab-page { overscroll-behavior-y: contain; }
+.kx-ptr {
+  position: absolute; top: 6px; left: 50%; z-index: 5; width: 40px; height: 40px; margin-left: -20px; border-radius: 50%;
+  display: grid; place-items: center; color: var(--cyan);
+  background: var(--kx-glass); border: 1px solid var(--line); box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.9);
+  opacity: 0; pointer-events: none; transform: translateY(calc(var(--p, 0) * 1px - 50px)) rotate(calc(var(--p, 0) * 4deg));
+  transition: opacity 0.2s;
+}
+.kx-ptr.show { opacity: 1; }
+.kx-ptr.snap { transition: opacity 0.2s, transform 0.3s var(--kx-spring); }
+.kx-ptr.spin svg { animation: kxSpinFast 0.8s linear infinite; }
+@keyframes kxSpinFast { to { transform: rotate(360deg); } }
+
+/* Scroll-to-bottom button */
+.to-bottom { border-radius: 999px; backdrop-filter: blur(12px); box-shadow: 0 12px 26px -12px rgba(0, 0, 0, 0.95); transition: transform 0.25s var(--kx-spring), opacity 0.2s; }
+.to-bottom:active { transform: scale(0.9); }
+
+@media (prefers-reduced-motion: reduce) {
+  .kx-ambient i, .composer.kx-typing .send-btn, .kx-ptr.spin svg { animation: none; }
+  .wa-top, .wa-top h1, .wa-top .mini-logo { transition: none; }
+}
