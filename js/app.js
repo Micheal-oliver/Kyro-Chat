@@ -394,10 +394,45 @@ function renderChats(items) {
   }
 }
 
+function toast(msg, kind, ms) {
+  let box = document.getElementById("toastBox");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "toastBox";
+    box.setAttribute("aria-live", "polite");
+    document.body.appendChild(box);
+  }
+  const t = document.createElement("div");
+  t.className = "toast" + (kind ? " " + kind : "");
+  t.textContent = msg;
+  box.appendChild(t);
+  setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 260); }, ms || 3200);
+}
+function maybeHint(key, text, delay) {
+  try {
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, "1");
+  } catch (_) { return; }
+  setTimeout(() => toast(text, "tip", 6500), delay || 800);
+}
+function skeletonRows(n) {
+  let html = "";
+  for (let i = 0; i < n; i++) {
+    html += '<div class="skel-row"><div class="skel av"></div><div style="flex:1"><div class="skel ln" style="width:' + (48 + (i * 13) % 30) + '%"></div><div class="skel ln" style="width:' + (70 - (i * 9) % 25) + '%;height:10px"></div></div></div>';
+  }
+  return html;
+}
+
 async function loadChats() {
+  const box = document.getElementById("chatList");
+  if (box && !box.children.length) {
+    document.getElementById("chatsEmpty").hidden = true;
+    box.innerHTML = skeletonRows(5);
+  }
   const data = await Kyro.api.chats();
   chats = data._ok ? asArray(data) : [];
   renderChats(chats);
+  if (chats.length) maybeHint("kyro.hint.chat", "Tip: press and hold a chat to pin, mute or archive it.", 1200);
 }
 
 function openThread(peer) {
@@ -438,7 +473,10 @@ async function loadMessages() {
     el.scrollTop = el.scrollHeight;
     return;
   }
+  el.innerHTML = '<div class="skel skel-bubble"></div><div class="skel skel-bubble me"></div><div class="skel skel-bubble"></div>';
   const data = await Kyro.api.messages(currentPeer.id);
+  el.innerHTML = "";
+  el.dataset.day = "";
   const list = asArray(data);
   if (!data._ok) {
     el.innerHTML = '<p class="hint">' + (data.message || "Could not load chats.") + "</p>";
@@ -454,6 +492,7 @@ async function loadMessages() {
     appendMsg(el, makeBubble(m));
   });
   el.scrollTop = el.scrollHeight;
+  maybeHint("kyro.hint.msg", "Tip: hold a message for reactions, edit and more. Swipe it to reply.", 900);
 }
 
 function tickHtml(m) {
@@ -473,12 +512,19 @@ function dayLabel(ts) {
 }
 function appendMsg(box, bubble) {
   const key = dayKey(bubble._ts || Date.now());
+  let divided = false;
   if (box.dataset.day !== key) {
+    divided = true;
     const div = document.createElement("div");
     div.className = "day-div";
     div.textContent = dayLabel(bubble._ts || Date.now());
     box.appendChild(div);
     box.dataset.day = key;
+  }
+  const prev = box.lastElementChild;
+  if (!divided && prev && prev.classList && prev.classList.contains("bubble") && !prev.dataset.react &&
+      prev.classList.contains("me") === bubble.classList.contains("me")) {
+    bubble.classList.add("cont");
   }
   box.appendChild(bubble);
 }
@@ -542,7 +588,7 @@ function openLightbox(node) {
 }
 async function downloadBubble(bubble, m) {
   const data = await getBubbleMedia(bubble, m);
-  if (!data) { alert("Couldn't load that file. It may have expired."); return; }
+  if (!data) { toast("Couldn't load that file. It may have expired."); return; }
   saveDataUrl(data, m.fileName || m.kind || "file");
 }
 
@@ -567,10 +613,14 @@ function makeBubble(m) {
     img.alt = "photo";
     bubble.appendChild(img);
   } else if (kind === "voice" && m.media) {
-    const audio = document.createElement("audio");
-    audio.controls = true;
-    audio.src = m.media;
-    bubble.appendChild(audio);
+    if (window.Rich) {
+      bubble.appendChild(Rich.voicePlayer(m.media));
+    } else {
+      const audio = document.createElement("audio");
+      audio.controls = true;
+      audio.src = m.media;
+      bubble.appendChild(audio);
+    }
   } else if (kind === "video" || kind === "file") {
     bubble._media = m.media || "";
     const name = m.fileName || (kind === "video" ? "Video" : "File");
@@ -618,7 +668,8 @@ function makeBubble(m) {
       }
       bubble._plain = w.text;
       bubble._replyPrefix = w.replyId !== undefined ? wireReply(w.replyId, w.quote, "") : "";
-      t.textContent = w.text;
+      const rich = window.Rich ? Rich.render(t, w.text) : (t.textContent = w.text, {});
+      bubble.classList.toggle("mentions-me", !!(rich.mentionsMe && !mine));
       bubble.style.display = "";
       const old = bubble.querySelector(".quote");
       if (old) old.remove();
@@ -896,7 +947,7 @@ if (messageInput) {
 }
 
 document.getElementById("attachBtn").addEventListener("click", () => document.getElementById("imageInput").click());
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 function readAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -920,15 +971,15 @@ document.getElementById("imageInput").addEventListener("change", async (e) => {
     return;
   }
   if (String(currentPeer.id).startsWith("group:")) {
-    alert("Sending files and videos in groups isn't available yet. Use a one-to-one chat.");
+    toast("Sending files and videos in groups isn't available yet. Use a one-to-one chat.");
     return;
   }
   if (file.size > MAX_FILE_BYTES) {
-    alert("That file is " + fmtSize(file.size) + ". The limit is 5 MB, so short video clips and small documents only.");
+    toast("That file is " + fmtSize(file.size) + ". The limit is 10 MB.");
     return;
   }
   let media;
-  try { media = await readAsDataUrl(file); } catch (_) { alert("Couldn't read that file."); return; }
+  try { media = await readAsDataUrl(file); } catch (_) { toast("Couldn't read that file."); return; }
   const kind = (file.type || "").startsWith("video/") ? "video" : "file";
   const fileName = file.name || (kind === "video" ? "video" : "file");
   const label = (kind === "video" ? "\ud83c\udfa5 " : "\ud83d\udcc4 ") + fileName;
@@ -1909,7 +1960,7 @@ document.getElementById("actForward").addEventListener("click", () => {
       let fmedia = fm.media || "";
       if (heavy) {
         fmedia = await getBubbleMedia(actionMsg.bubble, fm);
-        if (!fmedia) { alert("Couldn't load that file to forward it."); return; }
+        if (!fmedia) { toast("Couldn't load that file to forward it."); return; }
       }
       currentPeer = p;
       await sendChat({
@@ -2239,7 +2290,7 @@ function notifyPeer(to, type, id) {
 }
 async function setBlocked(peer, on) {
   const res = await (on ? Kyro.api.blockUser(peer.id) : Kyro.api.unblockUser(peer.id)).catch(() => null);
-  if (!res || res._ok === false) { alert("Couldn't update the block. Check your connection and try again."); return false; }
+  if (!res || res._ok === false) { toast("Couldn't update the block. Check your connection and try again."); return false; }
   const set = blockedSet();
   if (on) set.add(String(peer.id)); else set.delete(String(peer.id));
   save("kyro.blocked", Array.from(set));
@@ -2258,13 +2309,13 @@ document.getElementById("piReport").addEventListener("click", async () => {
   const reason = prompt("Why are you reporting " + (currentPeer.name || "this user") + "? (optional)");
   if (reason === null) return;
   const res = await Kyro.api.reportUser(currentPeer.id, reason).catch(() => null);
-  alert(res && res._ok !== false ? "Thanks, we received your report." : "Couldn't send the report. Try again later.");
+  toast(res && res._ok !== false ? "Thanks, we received your report." : "Couldn't send the report. Try again later.");
 });
 document.getElementById("piDisappear").addEventListener("change", async (e) => {
   if (!currentPeer) return;
   const seconds = Number(e.target.value);
   const res = await Kyro.api.setChatSettings(currentPeer.id, seconds).catch(() => null);
-  if (!res || res._ok === false) { alert("Couldn't change this setting."); return; }
+  if (!res || res._ok === false) { toast("Couldn't change this setting."); return; }
   sysNote("You turned disappearing messages " + (seconds ? "on: " + DISAPPEAR_LABEL[seconds] : "off"));
   notifyPeer(currentPeer.id, "setting");
 });
@@ -2338,6 +2389,75 @@ async function handleNotify(d) {
 }
 
 
+
+// ---------- @mentions + link names ----------
+function groupMemberPeople() {
+  if (!currentPeer || !String(currentPeer.id).startsWith("group:")) return [];
+  const ids = (currentPeer.members || (load(LS.groups, []).find((g) => "group:" + g.id === currentPeer.id) || {}).members || []).map(String);
+  const people = chats.map(peerFrom).concat(load(LS.contacts, []));
+  const out = [];
+  const seen = new Set();
+  ids.forEach((id) => {
+    if (id === meId || seen.has(id)) return;
+    const p = people.find((x) => String(x.id) === id && x.name);
+    if (p) { seen.add(id); out.push({ id, name: String(p.name) }); }
+  });
+  return out;
+}
+if (window.Rich) {
+  Rich.setNames(() => groupMemberPeople().map((p) => p.name).concat([meName]));
+  Rich.setMeNames(() => [meName, me.firstName, me.username && String(me.username).replace(/^@/, ""), [me.firstName, me.lastName].filter(Boolean).join(" ")]);
+}
+
+(function mentionPicker() {
+  const input = document.getElementById("messageInput");
+  const pop = document.getElementById("mentionPop");
+  if (!input || !pop) return;
+  let range = null;
+  const hide = () => { pop.hidden = true; pop.textContent = ""; range = null; };
+  function update() {
+    const people = groupMemberPeople();
+    if (!people.length) { hide(); return; }
+    const caret = input.selectionStart == null ? input.value.length : input.selectionStart;
+    const before = input.value.slice(0, caret);
+    const m = before.match(/(^|\s)@([^\s@]*)$/);
+    if (!m) { hide(); return; }
+    const q = m[2].toLowerCase();
+    const hits = people.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 6);
+    if (!hits.length) { hide(); return; }
+    range = { from: caret - m[2].length - 1, to: caret };
+    pop.textContent = "";
+    hits.forEach((p) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "mention-item";
+      b.textContent = p.name;
+      const pick = (e) => {
+        e.preventDefault();
+        const v = input.value;
+        const ins = "@" + p.name + " ";
+        input.value = v.slice(0, range.from) + ins + v.slice(range.to);
+        const pos = range.from + ins.length;
+        hide();
+        input.focus();
+        try { input.setSelectionRange(pos, pos); } catch (_) {}
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      };
+      b.addEventListener("mousedown", pick);
+      b.addEventListener("touchstart", pick, { passive: false });
+      pop.appendChild(b);
+    });
+    const r = document.getElementById("composer").getBoundingClientRect();
+    pop.style.bottom = Math.max(8, window.innerHeight - r.top + 6) + "px";
+    pop.hidden = false;
+  }
+  input.addEventListener("input", update);
+  input.addEventListener("click", update);
+  input.addEventListener("keyup", (e) => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") update(); });
+  input.addEventListener("blur", () => setTimeout(hide, 120));
+  document.getElementById("composer").addEventListener("submit", hide);
+})();
+
 // ---------- Theme (system / dark / light) ----------
 function applyTheme(choice) {
   const light = choice === "light" || (choice === "system" && window.matchMedia("(prefers-color-scheme: light)").matches);
@@ -2393,7 +2513,7 @@ async function openBlockedList() {
     btn.addEventListener("click", async () => {
       btn.disabled = true;
       const r = await Kyro.api.unblockUser(u._id || u.id).catch(() => null);
-      if (!r || r._ok === false) { btn.disabled = false; alert("Couldn't unblock. Try again."); return; }
+      if (!r || r._ok === false) { btn.disabled = false; toast("Couldn't unblock. Try again."); return; }
       const set = blockedSet();
       set.delete(String(u._id || u.id));
       save("kyro.blocked", Array.from(set));
@@ -2535,7 +2655,7 @@ document.getElementById("wallFile").addEventListener("change", async (e) => {
     renderWallPicker();
     applyWallpaper();
   } catch (_) {
-    alert("Couldn't use that photo. Try a smaller one.");
+    toast("Couldn't use that photo. Try a smaller one.");
   }
 });
 
@@ -2567,7 +2687,7 @@ function galRender() {
         cell.innerHTML = "<span class='gal-play'>\u25b6</span>";
         cell.addEventListener("click", async () => {
           const r = await Kyro.api.messageMedia(m._id).catch(() => null);
-          if (!r || !r.media) { alert("Couldn't load that video."); return; }
+          if (!r || !r.media) { toast("Couldn't load that video."); return; }
           const v = document.createElement("video");
           v.src = r.media; v.controls = true; v.autoplay = true; v.playsInline = true; v.className = "lightbox-img";
           openLightbox(v);
@@ -2596,7 +2716,7 @@ function galRender() {
       row.append(ico, info);
       row.addEventListener("click", async () => {
         const r = await Kyro.api.messageMedia(m._id).catch(() => null);
-        if (!r || !r.media) { alert("Couldn't load that file. It may have expired."); return; }
+        if (!r || !r.media) { toast("Couldn't load that file. It may have expired."); return; }
         saveDataUrl(r.media, m.fileName || "file");
       });
       body.appendChild(row);
