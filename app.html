@@ -18,6 +18,13 @@
   </script>
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="app.css" />
+  <link rel="stylesheet" href="kyro-extras.css" />
+  <link rel="stylesheet" href="kyro-chat-extras.css" />
+  <link rel="stylesheet" href="kyro-pinpoll.css" />
+  <link rel="stylesheet" href="kyro-more.css" />
+  <link rel="stylesheet" href="kyro-profile.css" />
+  <link rel="stylesheet" href="kyro-vanish.css" />
+  <link rel="manifest" href="manifest.webmanifest" />
 </head>
 <body class="app-body is-loading">
   <div class="kyro-loader" id="kyroLoader">
@@ -54,7 +61,9 @@
     <main class="wa-main">
       <section class="tab-page is-on" data-tab="chats">
         <div class="empty-box" id="chatsEmpty">
-          <p>Start conversation</p>
+          <div class="empty-art" aria-hidden="true">&#128172;</div>
+          <p>No chats yet</p>
+          <small>Tap + to message someone</small>
           <button class="fab-inline" id="emptyPlus" type="button">+</button>
         </div>
         <div class="chips" id="chatChips">
@@ -148,6 +157,7 @@
       <span>You blocked this contact.</span>
       <button type="button" id="unblockBtn">Unblock</button>
     </div>
+    <div class="mention-pop" id="mentionPop" hidden></div>
     <form class="composer" id="composer">
       <button class="icon-round" id="attachBtn" type="button" aria-label="Attach photo, video or file">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6H10v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6z"/></svg>
@@ -309,6 +319,21 @@
           <span class="switch"><input type="checkbox" id="setPopups" checked /><i></i></span>
         </label>
         <h4 class="set-h">Privacy and safety</h4>
+        <label class="set-row">
+          <span>App lock<small>Ask for a PIN when you open Kyro Chat</small></span>
+          <span class="switch"><input type="checkbox" id="setLock" /><i></i></span>
+        </label>
+        <div id="lockOpts" hidden>
+          <label class="set-row">
+            <span>Lock after<small>Time away from the app</small></span>
+            <select id="lockDelay" class="lock-select">
+              <option value="0">Immediately</option>
+              <option value="60">1 minute</option>
+              <option value="300">5 minutes</option>
+            </select>
+          </label>
+          <button class="set-link" id="lockChangeBtn" type="button" style="margin-bottom:8px">Change PIN<em>&rsaquo;</em></button>
+        </div>
         <button class="set-link" id="blockedBtn" type="button">Blocked contacts<em>&rsaquo;</em></button>
         <h4 class="set-h">Chats</h4>
         <button class="set-link" id="wallBtn" type="button" style="margin-bottom:8px">Chat wallpaper<em>&rsaquo;</em></button>
@@ -415,7 +440,14 @@
   <script src="https://cdn.jsdelivr.net/npm/agora-rtc-sdk-ng@4.20.2/AgoraRTC_N-4.20.2.js"></script>
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script src="js/kyro.js"></script>
+  <script src="js/lock.js"></script>
+  <script src="js/rich.js"></script>
   <script src="js/e2e.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/extras.js"></script>
+  <script src="js/chat-extras.js"></script>
+  <script src="js/pin-poll.js"></script>
+  <script src="js/more-extras.js"></script>
+  <script src="js/vanish.js"></script>
 </body>
 </html>
