@@ -1,0 +1,41 @@
+/* Kyro message tools (pairs with js/msg-tools.js). Remove the <link> to undo. */
+
+:root { --kz-scale: 1; }
+
+/* ---- Text size: messages, the typing box and timestamps follow the setting ---- */
+.bubble { font-size: calc(16px * var(--kz-scale)); }
+body.app-body .bubble { font-size: calc(15.5px * var(--kz-scale)); }
+.composer input { font-size: calc(16px * var(--kz-scale)); }
+body.app-body .composer input#messageInput { font-size: calc(16px * var(--kz-scale)); }
+.mtime { font-size: calc(11px * var(--kz-scale)); }
+body.app-body .bubble .mtime { font-size: calc(11px * var(--kz-scale)); }
+
+.kz-size .theme-box { margin-bottom: 8px; }
+.kz-size-preview {
+  display: flex; justify-content: flex-start;
+  margin: 0 0 14px; padding: 12px 14px; border-radius: 14px;
+  background: rgba(155, 109, 255, 0.08);
+}
+.kz-size-bubble {
+  display: inline-block; max-width: 86%;
+  padding: 9px 13px; border-radius: 16px 16px 16px 6px;
+  background: linear-gradient(135deg, var(--accent-a, #9b6dff), var(--accent-b, #3ce7ff));
+  color: #fff; font-weight: 500;
+  font-size: calc(16px * var(--kz-scale));
+  transition: font-size 0.18s ease;
+}
+
+/* ---- Delete ---- */
+.bubble.kz-gone { display: none !important; }
+
+.bubble.kz-del { opacity: 0.8; }
+.bubble.kz-del > :not(.kz-del-text):not(.mtime):not(.ticks):not(.k-meta) { display: none !important; }
+.kz-del-text { font-style: italic; opacity: 0.85; }
+
+#kzDelModal .hint { margin: 0 0 10px; text-align: center; }
+.sheet-btn.kz-danger { color: #ff6b81; font-weight: 600; }
+.sheet-btn[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kz-size-bubble { transition: none; }
+}

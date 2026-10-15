@@ -1,0 +1,21 @@
+/* Kyro stickers plus. Additive. Remove the <link> and <script> hook lines in app.html to undo. */
+.kx-pick-tabs { overflow-x: auto; scrollbar-width: none; }
+.kx-pick-tabs::-webkit-scrollbar { display: none; }
+.kx-pick-tabs button { flex: none; }
+
+.kx-pick-grid.ks-mk-grid { display: block; }
+.ks-mk { display: flex; flex-direction: column; gap: 10px; }
+.ks-mk-top { display: flex; gap: 12px; align-items: center; }
+.ks-mk-prev { width: 96px; height: 96px; flex: none; object-fit: contain; border-radius: 16px; background: rgba(255, 255, 255, 0.05); }
+.ks-mk-ctl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.ks-mk-ctl input { width: 100%; height: 42px; border-radius: 12px; padding: 0 12px; font-size: 16px; }
+.ks-mk-sw { display: flex; gap: 8px; }
+.kx-pick-grid .ks-mk button { aspect-ratio: auto; }
+.kx-pick-grid .ks-mk .ks-sw { width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid transparent; flex: none; }
+.kx-pick-grid .ks-mk .ks-sw.plain { background: #ffffff; }
+.kx-pick-grid .ks-mk .ks-sw.on { border-color: var(--accent-b, #3ce7ff); box-shadow: 0 0 0 2px rgba(11, 11, 28, 0.9) inset; }
+.ks-mk-emo { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.kx-pick-grid .ks-mk-emo button { height: 40px; padding: 0; border-radius: 12px; font-size: 22px; background: rgba(255, 255, 255, 0.05); }
+.kx-pick-grid .ks-mk-emo button.on { background: color-mix(in srgb, var(--accent-a, #9b6dff) 30%, transparent); }
+.kx-pick-grid .ks-mk-send { height: 44px; border-radius: 14px; font-weight: 700; font-size: 15px; color: #ffffff; background: var(--accent-a, #9b6dff); }
+.kx-pick-grid .ks-mk-send:active { transform: scale(0.98); }

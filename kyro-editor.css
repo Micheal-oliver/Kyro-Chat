@@ -1,0 +1,110 @@
+/* Kyro photo editor (pairs with js/photo-editor.js). Remove the <link> to undo. */
+
+.ke {
+  position: fixed; inset: 0; z-index: 112;
+  display: flex; flex-direction: column;
+  background: #0a0a12; color: #fff;
+  opacity: 0; transition: opacity 0.2s ease;
+  touch-action: none; overscroll-behavior: contain;
+  -webkit-user-select: none; user-select: none;
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+.ke.on { opacity: 1; }
+
+.ke-top {
+  display: flex; align-items: center; gap: 8px;
+  padding: max(10px, env(safe-area-inset-top)) 12px 8px;
+}
+.ke-spacer { flex: 1; }
+.ke-icon {
+  width: 42px; height: 42px; border-radius: 50%; border: 0;
+  background: rgba(255, 255, 255, 0.14); color: #fff; font-size: 26px; line-height: 1; cursor: pointer;
+}
+.ke-pill {
+  height: 38px; padding: 0 16px; border-radius: 999px; border: 0;
+  background: rgba(255, 255, 255, 0.14); color: #fff;
+  font-family: inherit; font-weight: 600; font-size: 14px; line-height: 1; cursor: pointer;
+}
+.ke-pill:active, .ke-icon:active { transform: scale(0.96); }
+
+.ke-stage {
+  flex: 1; min-height: 0; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: none;
+}
+.ke-wrap { position: relative; touch-action: none; box-shadow: 0 10px 40px -12px rgba(0, 0, 0, 0.8); }
+.ke-cv { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; border-radius: 2px; }
+.ke.is-text .ke-cv { cursor: text; }
+
+/* text on the photo */
+.ke-text-in {
+  position: absolute; z-index: 3; min-width: 120px;
+  padding: 2px 4px; border: 0; outline: 2px dashed rgba(255, 255, 255, 0.7); outline-offset: 2px;
+  background: rgba(0, 0, 0, 0.18); border-radius: 4px;
+  font-weight: 700; font-family: "DM Sans", system-ui, sans-serif;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+  -webkit-user-select: text; user-select: text;
+}
+
+/* crop box */
+.ke-crop {
+  position: absolute; z-index: 2; box-sizing: border-box;
+  border: 2px solid #fff; cursor: move;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  background:
+    linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35)) 33.3% 0 / 1px 100% no-repeat,
+    linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35)) 66.6% 0 / 1px 100% no-repeat,
+    linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35)) 0 33.3% / 100% 1px no-repeat,
+    linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35)) 0 66.6% / 100% 1px no-repeat;
+  touch-action: none;
+}
+.ke-crop[hidden] { display: none; }
+.ke-crop i { position: absolute; width: 44px; height: 44px; touch-action: none; }
+.ke-crop i::after {
+  content: ""; position: absolute; width: 18px; height: 18px; background: #fff;
+  border-radius: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.ke-crop i[data-h="nw"] { left: -22px; top: -22px; cursor: nwse-resize; }
+.ke-crop i[data-h="ne"] { right: -22px; top: -22px; cursor: nesw-resize; }
+.ke-crop i[data-h="sw"] { left: -22px; bottom: -22px; cursor: nesw-resize; }
+.ke-crop i[data-h="se"] { right: -22px; bottom: -22px; cursor: nwse-resize; }
+.ke-crop i::after { left: 13px; top: 13px; }
+
+/* bottom controls */
+.ke-bottom {
+  padding: 8px 12px max(14px, env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(10, 10, 18, 0), #0a0a12 30%);
+}
+.ke-opts { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; min-height: 40px; }
+.ke-opts[hidden] { display: none; }
+.ke-opts p { flex: 1; margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.7); }
+.ke-apply { background: linear-gradient(135deg, var(--accent-a, #9b6dff), var(--accent-b, #3ce7ff)); }
+
+.ke-colors { display: flex; gap: 10px; flex: 1; overflow-x: auto; padding: 4px 2px; scrollbar-width: none; }
+.ke-colors::-webkit-scrollbar { display: none; }
+.ke-dot {
+  flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35); cursor: pointer;
+}
+.ke-dot.on { border-color: #fff; transform: scale(1.18); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2); }
+.ke-size { display: flex; align-items: center; gap: 8px; font-size: 12px; color: rgba(255, 255, 255, 0.7); }
+.ke-size input { width: 96px; accent-color: var(--accent-a, #9b6dff); }
+
+.ke-bar { display: flex; align-items: center; gap: 6px; }
+.ke-tool {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 7px 4px; border: 0; border-radius: 14px;
+  background: transparent; color: rgba(255, 255, 255, 0.75);
+  font-family: inherit; font-weight: 600; font-size: 11px; line-height: 1; cursor: pointer;
+}
+.ke-tool b { font-size: 20px; font-weight: 700; line-height: 1; }
+.ke-tool.on { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.ke-send {
+  flex: 0 0 auto; width: 52px; height: 52px; margin-left: 4px; border: 0; border-radius: 50%;
+  display: grid; place-items: center; color: #fff; cursor: pointer;
+  background: linear-gradient(135deg, var(--accent-a, #9b6dff), var(--accent-b, #3ce7ff));
+  box-shadow: 0 8px 22px -8px var(--accent-a, #9b6dff);
+}
+.ke-send:active { transform: scale(0.94); }
+
+@media (prefers-reduced-motion: reduce) { .ke { transition: none; } }

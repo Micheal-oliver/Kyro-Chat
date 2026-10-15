@@ -1,5 +1,5 @@
 /* Network-first service worker: always fetches fresh files, falls back to cache offline. */
-const CACHE = "kyro-shell-v1";
+const CACHE = "kyro-shell-v2";
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener("fetch", (e) => {

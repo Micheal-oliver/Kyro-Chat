@@ -135,3 +135,107 @@ Files: `kyro-vanish.css`, `js/vanish.js` (two hook lines in `app.html`). View on
 
 - **Disappearing messages** — clock button in the chat header opens a picker: Off, 5 minutes, 1 hour, 24 hours, 7 days, 30 days, 90 days (one-to-one chats). A small badge shows the active timer and each message shows a countdown
 - **View once** — tap the dashed "1" button in the composer, then attach a photo or video (one-to-one chats). The receiver sees a card, taps it, and the file opens full screen once. The server wipes the file in the same step, so it can't be fetched again. The sender sees "Opened" when they have looked. View-once messages can't be forwarded and don't appear in the media gallery
+
+## Redesign
+
+File: `kyro-redesign.css` (one `<link>` in `app.html`, `login.html`, `signup.html`, `index.html`; CSS only). A modern, rounded, floating look with all colours unchanged.
+Floating glass tab bar, squircle avatars and buttons, card-style chat rows with a purple edge on unread chats, pill filter chips, a single floating pill composer with a round send button, springy bubbles, grabber-style bottom sheets with blurred backdrops, and a glass sign-in card. Remove the `<link>` lines to go back to the previous look.
+
+## Groups fix
+
+Files: `kyro-groups.css`, `js/groups-fix.js` (two hook lines in `app.html`).
+
+- **Add members from everyone you know** — the group picker and the manage-members list now show saved contacts and people you already chat with (before: saved contacts only, so it was often empty). Search appears when the list is long; you must pick at least one person
+- **Members already in a group are never dropped** when you save the list
+- **Group info** — tap the group's name inside the chat to see who is in it and (as an admin) add or remove members. The header shows the member count
+- The tiny "+" on group rows is now a clear "add people" icon
+
+## Polish pass
+
+Files: `kyro-polish.css`, `js/polish.js` (two hook lines in `app.html`). Visual and feel only, no data changes.
+A slow-moving purple and cyan glow behind the chat list, a header that shrinks smoothly as you scroll, the mic button turning into Send when you type (and back), pull-to-refresh on the chat list, and a softer scroll-to-bottom button.
+
+## Ticks and swipe actions
+
+Files: `kyro-ticks-swipe.css`, `js/ticks.js`, `js/swipe.js` (hook lines in `app.html`). Real "delivered" needs the updated backend (`realtime.js`).
+
+- **Ticks** — drawn marks on your own messages: a pulsing clock while sending, one tick when sent, two ticks when delivered (the other person's app is online and has it), and two bright glowing white ticks with a small pop when they have seen it
+- **Swipe actions** — swipe a chat right to pin or unpin; swipe left to reveal Mute and Archive (swipe all the way to archive at once). Uses the app's existing pin, mute and archive lists
+
+## Design v2 (full UI refresh)
+
+Files: `kyro-design.css`, `js/design.js` (linked last in `app.html`; the CSS is also linked in `index.html`, `login.html`, `signup.html`). Remove those link/script lines to go back to the previous look. One small edit in `js/ticks.js` (tick marks now work when time and ticks are grouped).
+
+- **Chat list** — flat rows with inset hairlines, round avatars (groups are rounded squares), accent unread pills, pin and mute icons, instant search, filter chips with counts. The per-row call button moved to the chat header.
+- **Header** — compact title, always-visible search, and a ⋮ menu (New group, Add contact, Starred, Settings, Log out).
+- **Account** — a proper settings list with icon tiles (Edit profile, Appearance, Settings, Wallpaper, Starred, Blocked) and a Log out row. All rows trigger the existing features.
+- **Chat** — grouped bubbles with time and ticks inside, date pills, a ⋮ menu for chat search and disappearing messages, a calm floating composer.
+- **Navigation** — slimmer floating bar, accent pill on the active tab, unread badge beside the Chats icon.
+- **Desktop (960px+)** — two panes: chat list on the left, conversation on the right.
+- **Light theme, focus rings, reduced motion** respected. Sign in and Create account use the same inputs, buttons and logo mark.
+
+## Smooth layer
+
+Files: `kyro-smooth.css`, `js/smooth.js` (linked last in `app.html`). Motion and performance only. Remove those two lines to undo.
+
+- **Chat open and close** slides in from the right and slides back out (phones and tablets); the chat list eases back behind it
+- **Sheets and dialogs** (plus menu, add contact, create group) fade and rise on open and close, instead of vanishing
+- **No replays** — the chat list stagger plays once on first load (not on every refresh), and only a newly arrived bubble pops in, not the whole history
+- **Tabs** use a single short fade
+- **Lighter glow** — soft gradients instead of heavy blur filters; the animation pauses when a chat covers it or the tab is hidden
+- **Swipe back** — drag from the left edge of a chat and it follows your finger; release past a third of the screen (or flick) to go back
+- **Touch** — no tap delay or grey tap flash, buttons ease instead of snapping, avatars and images fade in
+
+## Skeleton upgrade
+
+Files: `kyro-skeleton.css`, `js/skeleton.js` (hook lines in `app.html`). Remove them to undo. The app already showed grey placeholders for the chat list and messages; this makes them smoother and covers more.
+
+- **Smoother shimmer** — drawn as a moving overlay (GPU) instead of animating the background, so it stays fluid while the page is busy
+- **Slow-server note** — if placeholders are still showing after 4 seconds (the free server waking up), a small line explains the wait
+- **More places** — the blocked contacts list and gallery now show placeholders instead of plain "Loading..." text
+
+## Double-tap to react
+
+Files: `kyro-doubletap.css`, `js/double-tap.js` (hook lines in `app.html`). Remove them to undo.
+
+- **Double-tap a message** (or double-click on desktop) to add a heart; double-tap again to remove it. A big heart pops over the message with a light vibration
+- Uses the app's own reaction code, so it syncs exactly like picking a reaction from the long-press menu
+- One-to-one chats only (same as reactions today). Links, voice notes and buttons inside a message are ignored, so they still work normally
+
+## Stickers plus
+
+Files: `kyro-stickers-plus.css`, `js/stickers-plus.js` (hook lines in `app.html`). Remove them to undo. Plugs into the existing sticker picker; the built-in packs are untouched.
+
+- **Three more packs** — Mood, Chat and Fun (12 stickers each). Stickers you send from them also show up in Recent
+- **Make tab** — design your own: pick an emoji, type up to 16 characters of text, choose Classic (white outline) or a coloured tile, preview it live, then send
+- Same format as the built-in stickers (240x240 PNG sent as an image message), so no backend change and the other person sees them as normal stickers
+- The tab row now scrolls sideways when it gets long
+
+## Message sounds and unread divider
+
+Files: `js/sounds.js`, `kyro-unread.css`, `js/unread-divider.js` (hook lines in `app.html`). Remove them to undo. No backend change.
+
+- **Message sounds** — a soft tick when you send and a two-note pop when a message arrives, with a short vibration on arrival. Two new switches under Settings > Notifications: "Message sounds" and "Vibrate on new message" (both on by default). Muted chats stay silent, and loading a chat's history never plays sounds. The sounds are synthesised, so there are no audio files. Browsers only allow audio after your first tap on the page
+- **Unread divider** — open a chat from the list with unread messages and a "3 unread messages" line appears above the first one, and the chat scrolls to it. The scroll-to-latest button (with its new-message count) already in the app is unchanged
+
+## Photo zoom
+
+Files: `kyro-zoom.css`, `js/zoom.js` (hook lines in `app.html`). Remove them to undo. No backend change.
+
+- **Tap a photo** in any chat to open it full screen. Tap the dark area, press the x, press Esc, or swipe down to close
+- **Zoom** — pinch with two fingers, double-tap (double-click on desktop) to jump in and out, or use the + / - buttons. Mouse wheel and trackpad pinch work too, up to 600%. Keys: `+`, `-`, `0` (reset)
+- **Move around** — drag while zoomed; the photo can't be dragged off screen. A Reset button appears when zoomed in
+- The **Media gallery** photos open in the same zoom viewer
+- Stickers and view-once photos are left alone. Double-tap-to-heart still works on text messages; on a photo the first tap opens it, so react to photos from the long-press menu
+
+## Message tools, photo editor, GIFs
+
+Files: `js/msg-tools.js`, `kyro-msgtools.css`, `js/photo-editor.js`, `kyro-editor.css`, `js/gif.js`, `js/gif-config.js`, `kyro-gif.css` (hook lines in `app.html`, plus 4 small `KyroMsg` lines in `js/app.js`). Remove the hook lines to undo. No backend change.
+
+- **Copy** — long-press a text message, then Copy
+- **Share** — long-press a text message or photo, then Share, to send it to another app. The photo viewer has a share button too. Needs a phone or browser that supports sharing; otherwise use Save to phone
+- **Delete for me / Delete for everyone** — Delete now asks. "For me" hides the message on this device (it stays hidden after a reload, which the old Delete did not). "For everyone" works on your own messages and leaves "This message was deleted" on both sides. It travels as a hidden message like reactions do, and the other app only accepts it from the person who sent the original. Note: the server still holds the original until the backend gets a delete route
+- **Text size** — Settings > Appearance > Text size (Small, Default, Large, Huge) with a live preview. Applies to messages, the typing box and timestamps
+- **Photo editor** — choose a photo and an editor opens: draw (7 colours, brush size), add text (tap to place, drag to move, tap to edit), crop (drag corners), rotate, undo, reset. Send sends the edited picture. GIFs skip the editor
+- **GIF search** — the GIF button next to the stickers button. Trending plus search, sent as a normal image message. Needs a free GIPHY key pasted into `js/gif-config.js` (Google closed Tenor's API in June 2026, so GIPHY is used)
+

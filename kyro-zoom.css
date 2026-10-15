@@ -1,0 +1,78 @@
+/* Kyro photo zoom viewer (pairs with js/zoom.js). Remove the <link> to undo. */
+
+/* photos in chat look tappable on desktop */
+.bubble > img:not(.kx-vo-hide) { cursor: zoom-in; }
+.bubble.kx-sticker > img { cursor: default; }
+
+.kz {
+  position: fixed; inset: 0; z-index: 110;
+  background: rgba(0, 0, 0, 0.94);
+  opacity: 0; transition: opacity 0.2s ease, background 0.2s ease;
+  touch-action: none; overscroll-behavior: contain;
+  -webkit-user-select: none; user-select: none;
+}
+.kz.on { opacity: 1; }
+
+.kz-stage {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; touch-action: none; cursor: zoom-in;
+}
+.kz-stage.zoomed { cursor: grab; }
+.kz-stage.zoomed:active { cursor: grabbing; }
+
+.kz-img {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain; transform-origin: 50% 50%;
+  will-change: transform;
+  -webkit-user-drag: none; -webkit-touch-callout: none;
+}
+.kz-img.anim { transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+.kz-x {
+  position: absolute; z-index: 2;
+  top: max(14px, env(safe-area-inset-top)); right: 16px;
+  width: 42px; height: 42px; border-radius: 50%; border: 0;
+  background: rgba(255, 255, 255, 0.16); color: #fff;
+  font-size: 26px; line-height: 1; cursor: pointer;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.kz-x:hover { background: rgba(255, 255, 255, 0.26); }
+
+.kz-bar {
+  position: absolute; z-index: 2; left: 50%; transform: translateX(-50%);
+  bottom: max(22px, calc(env(safe-area-inset-bottom) + 14px));
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px; border-radius: 999px;
+  background: rgba(30, 30, 40, 0.72); color: #fff;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  box-shadow: 0 8px 28px -10px rgba(0, 0, 0, 0.7);
+}
+.kz-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: 0;
+  background: rgba(255, 255, 255, 0.12); color: #fff;
+  font-size: 22px; line-height: 1; cursor: pointer;
+}
+.kz-btn:hover { background: rgba(255, 255, 255, 0.22); }
+.kz-btn:active { transform: scale(0.94); }
+.kz-pct { min-width: 52px; text-align: center; font: 600 13px/1 "DM Sans", system-ui, sans-serif; letter-spacing: 0.02em; }
+.kz-reset {
+  display: none; height: 38px; padding: 0 14px; border-radius: 999px; border: 0;
+  background: linear-gradient(135deg, var(--accent-a, #9b6dff), var(--accent-b, #3ce7ff));
+  color: #fff; font: 600 13px/1 "DM Sans", system-ui, sans-serif; cursor: pointer;
+}
+.kz.is-zoomed .kz-reset { display: inline-block; }
+
+.kz-hint {
+  position: absolute; z-index: 1; left: 0; right: 0;
+  bottom: calc(max(22px, env(safe-area-inset-bottom) + 14px) + 62px);
+  margin: 0; text-align: center; pointer-events: none;
+  color: rgba(255, 255, 255, 0.78); font: 500 13px/1.3 "DM Sans", system-ui, sans-serif;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+  transition: opacity 0.5s ease;
+}
+.kz-hint.off { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kz, .kz-img.anim, .kz-hint { transition: none; }
+}

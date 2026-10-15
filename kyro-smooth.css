@@ -1,0 +1,115 @@
+/* Kyro smooth layer. Motion and performance only; colours, layout and data are unchanged.
+   Remove the <link> and <script> hook lines in app.html to undo. */
+
+:root {
+  --ks-ease: cubic-bezier(0.22, 0.8, 0.24, 1);
+  --ks-out: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ---------- 1. Touch feel: no 300ms delay, no grey tap flash ---------- */
+html { -webkit-tap-highlight-color: transparent; }
+body.app-body button, body.app-body .row, body.app-body .tab, body.app-body .sheet-btn, body.app-body .set-link,
+body.app-body .chips button, body.app-body [role="button"] { touch-action: manipulation; }
+
+/* Low-specificity default so every button eases instead of snapping (existing rules still win) */
+:where(body.app-body button, body.app-body .row, body.app-body .tab, body.app-body .chips button) {
+  transition: background-color 0.2s var(--ks-ease), color 0.2s var(--ks-ease), border-color 0.2s var(--ks-ease),
+    opacity 0.2s var(--ks-ease), transform 0.18s var(--ks-ease), box-shadow 0.2s var(--ks-ease);
+}
+
+/* ---------- 2. Scrolling ---------- */
+body.app-body .messages, body.app-body .tab-page, body.app-body .sheet {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+body.app-body .messages { scroll-padding-bottom: 12px; }
+
+/* ---------- 3. Chat opens and closes with a slide (phones and tablets) ---------- */
+@media (max-width: 959px) {
+  body.app-body .thread-screen {
+    animation: none;
+    transform: translate3d(0, 0, 0);
+    transition: transform 0.34s var(--ks-out), visibility 0s;
+    will-change: transform;
+    backface-visibility: hidden;
+  }
+  /* Keep it rendered while hidden so the exit can animate; visibility + pointer-events keep it inert */
+  body.app-body .thread-screen[hidden] {
+    display: flex !important;
+    transform: translate3d(100%, 0, 0);
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform 0.28s var(--ks-out), visibility 0s linear 0.28s;
+  }
+  /* The chat list eases back slightly while a chat is on top */
+  body.app-body .wa-app { transition: transform 0.34s var(--ks-out), opacity 0.34s var(--ks-out); }
+  body.app-body.ks-thread-open .wa-app { transform: translate3d(-22%, 0, 0); opacity: 0.55; }
+}
+
+/* While a finger drags the chat (swipe back), follow it with no easing */
+body.app-body .thread-screen.ks-dragging { transition: none !important; }
+
+/* ---------- 4. Sheets and dialogs fade and rise, in and out ---------- */
+body.app-body .modal:not(.is-off):not(#callModal):not(#storyModal) {
+  animation: none;
+  opacity: 1;
+  transition: opacity 0.22s var(--ks-ease), visibility 0s;
+}
+body.app-body .modal:not(.is-off):not(#callModal):not(#storyModal) .sheet {
+  animation: none;
+  transform: translate3d(0, 0, 0);
+  transition: transform 0.34s var(--ks-out);
+  will-change: transform;
+}
+body.app-body .modal[hidden]:not(.is-off):not(#callModal):not(#storyModal) {
+  display: grid !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s var(--ks-ease), visibility 0s linear 0.2s;
+}
+body.app-body .modal[hidden]:not(.is-off):not(#callModal):not(#storyModal) .sheet {
+  transform: translate3d(0, 36px, 0);
+  transition: transform 0.24s var(--ks-ease);
+}
+
+/* ---------- 5. Tabs: one short fade (no double animation, no movement) ---------- */
+body.app-body .tab-page.is-on { animation: ksTabIn 0.22s var(--ks-ease) both; }
+@keyframes ksTabIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- 6. Chat list: stagger plays once on first load, never on every refresh ---------- */
+body.app-body .list .row { animation: none; }
+body.app-body .list.ks-stagger .row { animation: rowIn 0.38s var(--ks-ease) both; }
+body.app-body .list.ks-stagger .row:nth-child(2) { animation-delay: 0.04s; }
+body.app-body .list.ks-stagger .row:nth-child(3) { animation-delay: 0.08s; }
+body.app-body .list.ks-stagger .row:nth-child(4) { animation-delay: 0.12s; }
+body.app-body .list.ks-stagger .row:nth-child(5) { animation-delay: 0.16s; }
+body.app-body .list.ks-stagger .row:nth-child(n + 6) { animation-delay: 0.2s; }
+
+/* ---------- 7. Bubbles: only a message that just arrived pops in, not the whole history ---------- */
+body.app-body .bubble { animation: none; }
+body.app-body .bubble.ks-new { animation: kBubbleIn 0.24s var(--ks-ease) both; }
+
+/* ---------- 8. Cheaper glow: gradients instead of heavy blur filters (same colours) ---------- */
+.orb, .kx-ambient i { filter: none !important; will-change: transform; }
+.orb-1 { background: radial-gradient(closest-side, #6a3cff, transparent) !important; }
+.orb-2 { background: radial-gradient(closest-side, #1bb8d9, transparent) !important; }
+.orb-3 { background: radial-gradient(closest-side, #ff4fc4, transparent) !important; }
+.kx-ambient i:nth-child(1) { background: radial-gradient(closest-side, color-mix(in srgb, var(--purple, #9b6dff) 55%, transparent), transparent) !important; }
+.kx-ambient i:nth-child(2) { background: radial-gradient(closest-side, color-mix(in srgb, var(--cyan, #3ce7ff) 38%, transparent), transparent) !important; }
+
+/* Pause decorative loops when nobody can see them (tab hidden, or a chat covers the screen) */
+body.ks-still .orb, body.ks-still .kx-ambient i, body.ks-still .fab { animation-play-state: paused !important; }
+
+/* ---------- 9. Images fade in instead of popping ---------- */
+body.app-body .row-avatar img, body.app-body .bubble img, body.app-body .peer-avatar img { opacity: 1; transition: opacity 0.25s var(--ks-ease); }
+body.app-body img.ks-loading { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  body.app-body .thread-screen, body.app-body .thread-screen[hidden], body.app-body .wa-app,
+  body.app-body .modal, body.app-body .modal .sheet { transition-duration: 0.01ms !important; }
+  body.app-body.ks-thread-open .wa-app { transform: none; opacity: 1; }
+}
+
+/* Reply jump highlight: keep the flash visible (the rules above reset bubble animations) */
+body.app-body .bubble.flash { animation: flashMsg 1.2s ease; }

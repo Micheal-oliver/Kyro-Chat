@@ -1,0 +1,19 @@
+/* Kyro double-tap reaction. Additive. Remove the <link> and <script> hook lines in app.html to undo. */
+.ks-heart {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  font-size: 58px;
+  line-height: 1;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.3);
+  animation: ksHeart 0.8s cubic-bezier(0.22, 0.8, 0.24, 1) forwards;
+}
+@keyframes ksHeart {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  22% { opacity: 1; transform: translate(-50%, -50%) scale(1.25); }
+  42% { transform: translate(-50%, -50%) scale(0.95); }
+  100% { opacity: 0; transform: translate(-50%, -110%) scale(1); }
+}
+body.app-body .messages .bubble { -webkit-user-select: none; user-select: none; }
+@media (prefers-reduced-motion: reduce) { .ks-heart { animation-duration: 0.4s; } }

@@ -1,0 +1,39 @@
+/* Kyro skeleton upgrade. Additive: only restyles/extends the loading placeholders the app already has.
+   Remove the <link> and <script> hook lines in app.html to undo. */
+
+/* Shimmer drawn as a moving overlay (GPU transform) instead of animating background-position (repaints every frame) */
+body.app-body .skel {
+  position: relative;
+  overflow: hidden;
+  animation: none;
+  background: rgba(255, 255, 255, 0.07);
+}
+body.app-body .skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translate3d(-100%, 0, 0);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.13), transparent);
+  animation: ksSheen 1.4s ease-in-out infinite;
+  will-change: transform;
+}
+html[data-theme="light"] body.app-body .skel { background: rgba(30, 20, 80, 0.07); }
+html[data-theme="light"] body.app-body .skel::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent); }
+@keyframes ksSheen { to { transform: translate3d(100%, 0, 0); } }
+
+/* Placeholders fade in softly instead of popping */
+body.app-body .skel-row, body.app-body .skel-bubble { animation: ksSkelIn 0.25s ease both; }
+@keyframes ksSkelIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Slow-server note */
+.ks-wake {
+  margin: 10px 18px 0;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--k-text-2, #aab1c9);
+  animation: ksSkelIn 0.4s ease both;
+}
+
+body.ks-still .skel::after { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { body.app-body .skel::after { animation: none; opacity: 0; } }
