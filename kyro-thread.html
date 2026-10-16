@@ -87,10 +87,13 @@
       background: #6d4aff; color: white; font-size: 18px; cursor: pointer;
     }
   </style>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="kyro-native.css" />
 </head>
 <body>
   <div class="top">
-    <button class="back" onclick="window.location.href='kyro-app.html'">←</button>
+    <button class="back" onclick="window.location.href='app.html'">←</button>
     <div class="ava" id="ava">?</div>
     <div class="who">
       <h1 id="name">Chat</h1>
@@ -152,7 +155,7 @@
 
     const contact = contacts.find(c => c.id === threadId) || groups.find(g => g.id === threadId);
     if (!threadId || !contact) {
-      location.href = 'kyro-app.html';
+      location.href = 'app.html';
     } else {
       document.getElementById('name').textContent = contact.name;
       document.getElementById('sub').textContent = contact.handle || 'On Kyro';
