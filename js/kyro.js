@@ -3,35 +3,61 @@
   const TOKEN_KEY = "kyro.token";
   const USER_KEY = "kyro.user";
 
-  async function request(path, { method = "GET", body, token } = {}) {
+  // Render's free tier sleeps when idle. The first request can take up to a
+  // minute while it wakes, and it may answer 502/503/504 before it is ready.
+  const WAKE_DELAYS = [2500, 4000, 6000, 8000, 10000];
+  const WAKE_CODES = [502, 503, 504];
+
+  // Start waking the server as soon as the page loads, so the first real
+  // request is less likely to wait.
+  function warmUp() {
+    try { fetch(API_BASE + "/", { mode: "no-cors", cache: "no-store" }).catch(() => {}); } catch (_) {}
+  }
+
+  async function request(path, { method = "GET", body, token, onWait } = {}) {
     const headers = { Accept: "application/json" };
     if (body !== undefined) headers["Content-Type"] = "application/json";
     const auth = token || getToken();
     if (auth) headers.Authorization = "Bearer " + auth;
 
-    let lastErr;
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    let waitNotified = false;
+    const notifyWait = () => {
+      if (waitNotified) return;
+      waitNotified = true;
+      try { if (typeof onWait === "function") onWait(); } catch (_) {}
+    };
+
+    for (let attempt = 0; attempt <= WAKE_DELAYS.length; attempt++) {
+      let res = null;
       try {
-        const res = await fetch(API_BASE + path, {
+        res = await fetch(API_BASE + path, {
           method,
           headers,
           body: body !== undefined ? JSON.stringify(body) : undefined
         });
+      } catch (_) {
+        res = null; // network error: server may still be waking
+      }
+
+      if (res && !WAKE_CODES.includes(res.status)) {
         const raw = await res.text();
         let data = {};
         try { data = raw ? JSON.parse(raw) : {}; } catch { data = { message: raw }; }
         data._ok = res.ok;
         data._status = res.status;
         return data;
-      } catch (err) {
-        lastErr = err;
-        if (attempt === 1) await new Promise((r) => setTimeout(r, 2500));
+      }
+
+      if (attempt < WAKE_DELAYS.length) {
+        notifyWait();
+        await new Promise((r) => setTimeout(r, WAKE_DELAYS[attempt]));
       }
     }
+
     return {
       _ok: false,
       _status: 0,
-      message: "Failed to reach the server. Wait 30 seconds and try again — Render may be waking up."
+      message: "The server is still waking up. Please try again in a moment."
     };
   }
 
@@ -135,9 +161,9 @@
     agoraToken(channel) {
       return request("/api/calls/agora?channel=" + encodeURIComponent(channel));
     },
-    lookup(query) {
+    lookup(query, onWait) {
       const q = encodeURIComponent(String(query).replace(/^@/, ""));
-      return request("/api/users/lookup?q=" + q + "&email=" + q + "&phone=" + q + "&username=" + q);
+      return request("/api/users/lookup?q=" + q + "&email=" + q + "&phone=" + q + "&username=" + q, { onWait });
     },
     messages(otherUserId) {
       return request("/api/messages/" + encodeURIComponent(otherUserId));
@@ -163,6 +189,12 @@
     },
     updateProfile(payload) {
       return request("/api/users/me", { method: "PATCH", body: payload });
+    },
+    clearChat(otherId) {
+      return request("/api/chats/" + encodeURIComponent(otherId) + "/messages", { method: "DELETE" });
+    },
+    profileOf(id) {
+      return request("/api/users/profile/" + encodeURIComponent(id));
     },
     messageMedia(id) {
       return request("/api/messages/media/" + encodeURIComponent(id));
@@ -211,6 +243,8 @@
     }
     return false;
   }
+
+  warmUp();
 
   window.Kyro = {
     API_BASE, api, request,

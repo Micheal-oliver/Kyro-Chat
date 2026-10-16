@@ -104,6 +104,7 @@
         var items = [["Search in chat", "search", function () { press("threadSearchBtn"); }]];
         var timer = document.getElementById("kxTimerBtn");
         if (timer && !timer.hidden) items.push(["Disappearing messages", "timer", function () { press("kxTimerBtn"); }]);
+        if (window.KyroTheme) items.push(["Chat theme", "image", function () { KyroTheme.open(); }]);
         return items;
       });
     }

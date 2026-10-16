@@ -216,7 +216,44 @@
     hiddenAt = 0;
   });
 
-  window.KyroLock = { enabled, lockNow, disable, setPin, verify };
+  // ---------- Chat lock PIN (separate from the app PIN; protects chats you choose to lock) ----------
+  const CK = { hash: "kyro.clock.hash", salt: "kyro.clock.salt", fails: "kyro.clock.fails", until: "kyro.clock.until" };
+  const chatPinSet = () => !!get(CK.hash);
+  const chatWait = () => Math.max(0, (parseInt(get(CK.until, "0"), 10) || 0) - Date.now());
+  async function chatCheck(pin) {
+    const wait = chatWait();
+    if (wait > 0) return "Too many attempts. Try again in " + Math.ceil(wait / 1000) + "s";
+    if ((await hashPin(pin, get(CK.salt))) === get(CK.hash)) { del(CK.fails); del(CK.until); return true; }
+    const fails = (parseInt(get(CK.fails, "0"), 10) || 0) + 1;
+    set(CK.fails, String(fails));
+    if (fails >= MAX_FAILS) {
+      const ms = Math.min(15 * 60 * 1000, 30000 * Math.pow(2, fails - MAX_FAILS));
+      set(CK.until, String(Date.now() + ms));
+      return "Too many attempts. Try again in " + Math.ceil(ms / 1000) + "s";
+    }
+    return "Wrong PIN (" + (MAX_FAILS - fails) + " left before a timeout)";
+  }
+  async function chatPinCreate() {
+    const first = await ask({ title: "Create a chat lock PIN", sub: PIN_LEN + " digits to open your locked chats", cancelable: true });
+    if (!first) return false;
+    const second = await ask({ title: "Confirm your PIN", sub: "Enter it once more", cancelable: true, validate: async (p) => (p === first ? true : "PINs don't match") });
+    if (!second) return false;
+    const salt = randomSalt();
+    set(CK.salt, salt);
+    set(CK.hash, await hashPin(first, salt));
+    del(CK.fails); del(CK.until);
+    return true;
+  }
+  async function chatPinUnlock(title) {
+    const p = await ask({ title: title || "Locked chats", sub: "Enter your chat lock PIN", cancelable: true, validate: chatCheck });
+    return !!p;
+  }
+  async function chatPinChange() {
+    if (!(await chatPinUnlock("Enter current PIN"))) return false;
+    return chatPinCreate();
+  }
+
+  window.KyroLock = { enabled, lockNow, disable, setPin, verify, chatPinSet, chatPinCreate, chatPinUnlock, chatPinChange };
 
   // Lock straight away on page load, before the app builds
   const start = () => {

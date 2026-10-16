@@ -244,6 +244,13 @@ function peerFrom(item) {
     publicKey: other.publicKey || "",
     username: other.username || "",
     bio: other.bio || "",
+    about: other.about || "",
+    statusEmoji: other.statusEmoji || "",
+    statusText: other.statusText || "",
+    location: other.location || "",
+    website: other.website || "",
+    dateOfBirth: other.dateOfBirth || "",
+    isVerified: !!other.isVerified,
     unread: unreadCount(other._id || other.id || item.otherUserId || item.id)
   };
 }
@@ -372,6 +379,7 @@ function renderChats(items) {
     if (arch) return false;
     if (chatFilter === "unread") return unreadCount(peer.id) > 0;
     if (chatFilter === "pinned") return isPinned(peer.id);
+    if (chatFilter === "fav") return load("kyro.favs", []).includes(String(peer.id));
     return true;
   };
   const pinned = items.filter((item) => isPinned(peerFrom(item).id));
@@ -389,7 +397,7 @@ function renderChats(items) {
   if (!shown && (items.length || groups.length)) {
     const note = document.createElement("p");
     note.className = "hint filter-empty";
-    note.textContent = { unread: "You're all caught up. No unread chats.", pinned: "No pinned chats yet. Long-press a chat to pin it.", archived: "No archived chats.", all: "No chats to show." }[chatFilter];
+    note.textContent = { unread: "You're all caught up. No unread chats.", pinned: "No pinned chats yet. Long-press a chat to pin it.", fav: "No favorites yet. Long-press a chat and tap Add to favorites.", archived: "No archived chats.", all: "No chats to show." }[chatFilter];
     box.appendChild(note);
   }
 }
@@ -1072,7 +1080,9 @@ document.getElementById("contactForm").addEventListener("submit", async (e) => {
   const msg = document.getElementById("contactMsg");
   msg.className = "form-msg";
   msg.textContent = "Checking Kyro Chat…";
-  const data = await Kyro.api.lookup(q);
+  const data = await Kyro.api.lookup(q, () => {
+    msg.textContent = "Waking up the server. The first check can take up to a minute…";
+  });
   const found = asArray(data);
   if (!data._ok) {
     msg.className = "form-msg bad";
