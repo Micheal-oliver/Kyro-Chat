@@ -1,0 +1,16 @@
+/* Smart replies strip (js/smart-replies.js). Remove the link to undo. */
+.kr-smart { display: flex; gap: 8px; padding: 6px 12px 2px; overflow-x: auto; scrollbar-width: none; flex: none; }
+.kr-smart::-webkit-scrollbar { display: none; }
+.kr-smart[hidden] { display: none !important; }
+.kr-chip {
+  flex: none; border: 1px solid color-mix(in srgb, var(--accent-a, #9b6dff) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-a, #9b6dff) 14%, transparent);
+  color: inherit; font: inherit; font-size: 14px; padding: 7px 14px; border-radius: 999px;
+  cursor: pointer; white-space: nowrap; animation: krChipIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: transform 0.15s, background 0.15s;
+}
+.kr-chip:nth-child(2) { animation-delay: 0.04s; }
+.kr-chip:nth-child(3) { animation-delay: 0.08s; }
+.kr-chip:active { transform: scale(0.95); background: color-mix(in srgb, var(--accent-a, #9b6dff) 30%, transparent); }
+@keyframes krChipIn { from { opacity: 0; transform: translateY(6px) scale(0.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .kr-chip { animation: none; transition: none; } }

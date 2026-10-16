@@ -1,0 +1,21 @@
+/* Kyro chat organizing: lock, favorites, mark unread, clear/delete, export. Remove the <link> in app.html to undo. */
+
+/* long-press sheet now has more actions, so let it scroll on small screens */
+#chatOptsModal .sheet { max-height: 88dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+#chatOptsModal .sheet-btn { height: 46px; margin-top: 6px; }
+#chatOptsModal .sheet-btn.bad, .sheet-btn.bad { color: #ff7a93; }
+#chatOptsModal .cl-sep { height: 1px; margin: 12px 4px 4px; background: var(--line, rgba(255,255,255,.1)); }
+
+/* favorites */
+.cl-fav { color: #ffc861; margin-right: 4px; }
+
+/* "Locked chats" row at the top of the chat list */
+.row.cl-locked-row { width: 100%; text-align: left; cursor: pointer; border: 0; font: inherit; color: inherit; }
+.row.cl-locked-row .row-avatar { display: grid; place-items: center; font-size: 22px; background: linear-gradient(135deg, rgba(155,109,255,.35), rgba(60,231,255,.25)); }
+.row.cl-locked-row .grow span { color: var(--muted, #a8b0c8); }
+
+/* Locked chats page */
+.cl-page .cl-note { margin: 14px 16px 6px; font-size: 13px; color: var(--muted, #a8b0c8); line-height: 1.45; }
+.cl-page .list { margin-top: 6px; }
+.cl-page .cl-empty { text-align: center; padding: 26px 16px; }
+.cl-page label.set-row { padding: 12px 4px; }

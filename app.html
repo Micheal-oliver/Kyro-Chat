@@ -7,6 +7,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <meta name="theme-color" content="#070712" id="themeColor" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Kyro" />
+  <link rel="apple-touch-icon" href="images/icon-192.png" />
+  <link rel="stylesheet" href="kyro-appshell.css" />
   <script>
     (function () {
       try {
@@ -25,6 +31,8 @@
   <link rel="stylesheet" href="kyro-profile.css" />
   <link rel="stylesheet" href="kyro-vanish.css" />
   <link rel="stylesheet" href="kyro-groups.css" />
+  <link rel="stylesheet" href="kyro-status.css" />
+  <link rel="stylesheet" href="kyro-group-pro.css" />
   <link rel="stylesheet" href="kyro-redesign.css" />
   <link rel="stylesheet" href="kyro-polish.css" />
   <link rel="stylesheet" href="kyro-ticks-swipe.css" />
@@ -42,9 +50,15 @@
   <link rel="stylesheet" href="kyro-plus.css" />
   <link rel="stylesheet" href="kyro-editor.css" />
   <link rel="stylesheet" href="kyro-gif.css" />
+  <link rel="stylesheet" href="kyro-contact.css" />
+  <link rel="stylesheet" href="kyro-organize.css" />
+  <link rel="stylesheet" href="kyro-privacy.css" />
+  <link rel="stylesheet" href="kyro-theme.css" />
+  <link rel="stylesheet" href="kyro-smart.css" />
   <link rel="manifest" href="manifest.webmanifest" />
 </head>
 <body class="app-body is-loading">
+  <div id="kSplash" aria-hidden="true"><img src="images/icon-192.png" alt="" /><b>Kyro Chat</b></div>
   <div class="kyro-loader" id="kyroLoader">
     <div class="loader-rings" aria-hidden="true">
       <span></span><span></span><span></span>
@@ -87,6 +101,7 @@
         <div class="chips" id="chatChips">
           <button type="button" data-f="all" class="on">All</button>
           <button type="button" data-f="unread">Unread</button>
+          <button type="button" data-f="fav">Favorites</button>
           <button type="button" data-f="pinned">Pinned</button>
           <button type="button" data-f="archived">Archived</button>
         </div>
@@ -468,6 +483,9 @@
   <script src="js/more-extras.js"></script>
   <script src="js/vanish.js"></script>
   <script src="js/groups-fix.js"></script>
+  <script src="js/new-chat.js"></script>
+  <script src="js/status-pro.js"></script>
+  <script src="js/group-pro.js"></script>
   <script src="js/polish.js"></script>
   <script src="js/ticks.js"></script>
   <script src="js/swipe.js"></script>
@@ -487,5 +505,11 @@
   <script src="js/photo-editor.js"></script>
   <script src="js/gif-config.js"></script>
   <script src="js/gif.js"></script>
+  <script src="js/contact-info.js"></script>
+  <script src="js/chat-organize.js"></script>
+  <script src="js/privacy.js"></script>
+  <script src="js/chat-theme.js"></script>
+  <script src="js/smart-replies.js"></script>
+  <script src="js/app-shell.js"></script>
 </body>
 </html>

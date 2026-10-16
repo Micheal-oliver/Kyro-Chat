@@ -1,0 +1,29 @@
+/* App-like shell (js/app-shell.js). Remove the link/script to undo. */
+html, body { overscroll-behavior-y: none; }
+body.app-body { -webkit-touch-callout: none; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.bubble, .bubble *, input, textarea, [contenteditable] { -webkit-touch-callout: default; }
+body.app-body .thread-head { padding-top: max(10px, env(safe-area-inset-top)); }
+body.app-body .composer { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+body.app-body .wa-app, body.app-body .thread-screen { min-height: 100vh; min-height: 100dvh; }
+@media (display-mode: standalone) {
+  body.app-body { user-select: none; -webkit-user-select: none; }
+  .bubble, input, textarea, .kc-about, .msg-link { user-select: text; -webkit-user-select: text; }
+}
+
+/* Splash: only when launched from the home screen */
+#kSplash { display: none; }
+@media (display-mode: standalone) {
+  #kSplash { position: fixed; inset: 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #070712; transition: opacity 0.35s ease, visibility 0.35s; }
+  #kSplash img { width: 84px; height: 84px; border-radius: 22px; animation: kSplashPop 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+  #kSplash b { font: 700 22px "Outfit", system-ui, sans-serif; color: #fff; letter-spacing: 0.3px; }
+  #kSplash.out { opacity: 0; visibility: hidden; }
+}
+@keyframes kSplashPop { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { #kSplash img { animation: none; } #kSplash { transition: none; } }
+
+/* Share sheet */
+.ks-list { max-height: 46vh; overflow-y: auto; margin: 8px 0; }
+.ks-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 6px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; border-radius: 12px; cursor: pointer; }
+.ks-item:active { background: rgba(155, 109, 255, 0.16); }
+.ks-av { width: 40px; height: 40px; border-radius: 50%; flex: none; background: linear-gradient(135deg, var(--accent-a, #9b6dff), var(--accent-b, #3ce7ff)) center/cover; display: grid; place-items: center; font-weight: 700; color: #07071a; }
+.ks-prev { margin: 4px 2px 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.07); font-size: 13px; word-break: break-word; max-height: 90px; overflow: hidden; }

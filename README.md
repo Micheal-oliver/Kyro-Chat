@@ -260,3 +260,52 @@ Files: `js/kyro-plus.js`, `kyro-plus.css` (two hook lines at the end of the list
   - Commands are handled locally and never sent as a message. Anything that isn't one of these still works as before (quick replies on `/` are unchanged)
 - **Time words understood** — `20m`, `in 2 hours`, `1.5h`, `3 days`, `9pm`, `9:30am`, `21:00`, `noon`, `midnight`, `tonight`, `tomorrow 8am`, `friday 6pm`
 - **Limits** — up to 50 scheduled messages and 50 reminders. If the browser's storage is full, Saved tells you instead of failing silently
+
+## Status Pro and Group Pro (Oct 16)
+- `js/status-pro.js` + `kyro-status.css`: tall status cards, segmented rings, full-screen viewer (auto-advance, tap left/right, hold to pause, swipe down to close, emoji reactions), composer with coloured text, compressed photos with captions, and music.
+- `js/group-pro.js` + `kyro-group-pro.css`: tap a group's header for a full group page with photo, description, Add/Search/Media/Exit, and Members / Media / Settings tabs. Admins can add people, make or dismiss admins, remove members and edit the group.
+- Both still store data on this device (same `kyro.stories` and `kyro.groups` keys).
+
+
+## Contact Info + About Me
+
+- Tap a person's name or photo in a chat to open their **Contact Info** page (`js/contact-info.js`, `kyro-contact.css`).
+  Shows photo, @username, phone/email (if shared), live presence, status, About, location, website, birthday,
+  shared media/links/docs, mute, starred messages, disappearing messages, wallpaper, groups in common,
+  a safety-number encryption check, share contact, block and report.
+- **Account tab → About me** card: up to **500 characters**, a status (emoji + text), location, website,
+  and per-field privacy (Everyone / My contacts / Nobody). The old 120 character bio stays as a short tagline.
+- Backend: `GET /api/users/profile/:id`, and `PATCH /api/users/me` now accepts
+  `about`, `statusEmoji`, `statusText`, `location`, `website`, `privacy`.
+
+Founded by Mr Vael Tech
+
+## Chat organizing
+
+- **Lock chat** (long-press a chat, or Contact Info): hides the chat from the list behind its own 4-digit chat lock PIN
+  (optional fingerprint / Face ID on supported devices). A **Locked chats** row appears at the top of Chats.
+  Notifications for locked chats say "New message" only. It protects chats on this device, not on the server.
+- **Favorites** chip + star, **Mark as unread / read**, **Clear chat** (for you only), **Delete chat**, **Export chat** (.txt),
+  and a limit of 5 pinned chats. Folders and swipe actions were already in the app and still work.
+- Backend: `DELETE /api/chats/:otherId/messages` clears a chat for the caller only.
+
+## Privacy, per-chat themes, smart replies (Oct 16)
+
+Files: `js/privacy.js` + `kyro-privacy.css`, `js/chat-theme.js` + `kyro-theme.css`, `js/smart-replies.js` + `kyro-smart.css` (hook lines at the end of `app.html`; one extra menu line in `js/design.js` and one extra row in `js/contact-info.js`). Remove the hook lines to undo. **Privacy needs the updated backend** (`realtime.js`, `utils/profilePrivacy.js`, `models/User.js`, `routes/users.js`, `routes/messages.js`, `routes/chats.js`).
+
+- **Settings > Privacy and safety > Privacy**
+  - **Read receipts** — off hides your blue ticks from others. Reciprocal: you stop seeing theirs too
+  - **Last seen and online** — Everyone, My contacts or Nobody. The server only sends your presence to people allowed to see it. Reciprocal: choose Nobody and you stop seeing everyone else's
+  - **Typing indicator** — hides "typing..." and "recording..." from others
+  - **Profile photo** — Everyone, My contacts or Nobody (others see your initials; also applies to the picture on incoming calls)
+  - Shortcuts to About me privacy and Blocked contacts. "My contacts" means people you have exchanged messages with. Group chats are not affected
+- **Chat theme** (chat menu ⋮ > Chat theme, or Contact Info > Chat theme) — per chat: bubble colours plus a colour wallpaper, or a photo from your gallery or from the photos already in that chat, with Dim and Blur. Saved on this device only. The old Chat wallpaper is unchanged
+- **Smart replies** — up to 3 suggested answers above the message box for the latest incoming text. English only (other languages show nothing). Built on your device, never sent anywhere. Tap one to send it. Switch: Settings > Chats > Smart replies
+
+## App shell: full-screen polish and share target (Oct 16)
+
+Files: `kyro-appshell.css`, `js/app-shell.js`, updated `manifest.webmanifest` and `sw.js` (hook lines in `app.html`). Frontend only, no backend change. Remove the hook lines to undo.
+
+- **Full-screen polish** — safe-area padding for notches and the home bar (top bar, composer, landscape sides), a splash screen when launched from the home screen, the status bar colour follows the light/dark theme, no whole-page pull-to-refresh bounce, and UI text isn't selected by accident (messages and inputs still are). iPhone meta tags and touch icon added
+- **Share target** — in another app's Share menu choose Kyro, pick a chat, and the text, link or first photo/file is placed in that chat's message box (you tap Send). Needs Kyro installed to the home screen: works on Android Chrome and desktop Chrome/Edge, not on iPhone Safari. Shared items are kept for 15 minutes, so signing in first still works
+- Service worker cache bumped to `kyro-shell-v5`. After deploying, close and reopen the installed app once (Android may need a reinstall to pick up the new Share entry)

@@ -1,0 +1,5 @@
+/* Privacy sheet (js/privacy.js). Remove the link to undo. */
+.kp-sheet .set-row { gap: 12px; }
+.kp-sheet .lock-select { max-width: 150px; flex: none; }
+.kp-sheet .kp-note { margin: 10px 2px 4px; font-size: 12px; line-height: 1.45; opacity: 0.8; }
+.kp-sheet .set-h { margin-top: 14px; }
