@@ -55,10 +55,22 @@ document.getElementById("signupForm").addEventListener("submit", async (e) => {
     setError("detailsError", "Please fill in every field.");
     return;
   }
-  if (age === null || age < 8) {
+  const L = window.KYRO_LEGAL || {};
+  const minAge = L.minAge || 13;
+  if (age === null || age < 0 || age > 120) {
     setError("detailsError", "Please enter a valid date of birth.");
     return;
   }
+  if (age < minAge) {
+    setError("detailsError", "You must be at least " + minAge + " years old to use Kyro Chat.");
+    return;
+  }
+  const agree = document.getElementById("agree");
+  if (agree && !agree.checked) {
+    setError("detailsError", "Please agree to the Terms of Service and Privacy Policy to continue.");
+    return;
+  }
+  try { localStorage.setItem("kyro.legal.pending", JSON.stringify({ v: String(L.version || "1"), at: Date.now() })); } catch (_) {}
   const { firstName, lastName } = Kyro.splitName(fullName);
   pending = { email, password, firstName, lastName, phone, dateOfBirth, age, photo: pending.photo };
   const btn = document.querySelector('#signupForm button[type="submit"]');
