@@ -1,0 +1,44 @@
+/* Kyro finish: small, safe polish on top of everything else. Pairs with js/finish.js.
+   Remove the <link> and <script> lines in app.html to undo. */
+
+/* Instant taps: no grey flash, no 300ms double-tap-zoom delay */
+button, [role="button"], .sheet-btn, .icon-round, a, label, select, summary {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Scrolling stays inside the panel you're scrolling (no page bounce behind sheets and lists) */
+.messages, .wa-main, .tab-page, .sheet, .modal .sheet, .kx-pick-grid, .km-list {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Keyboard users get a clear ring; mouse and touch users don't */
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--k-acc, #9b6dff); outline-offset: 2px; border-radius: 8px; }
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline-offset: 0; }
+
+/* Smoother pressing */
+button, .sheet-btn, .icon-round { transition: transform 0.12s var(--k-ease, ease), background-color 0.15s ease, opacity 0.15s ease; }
+button:active:not(:disabled), .icon-round:active { transform: scale(0.96); }
+
+/* Photos and stickers fade in instead of popping */
+.bubble img { animation: kfFade 0.25s ease both; }
+@keyframes kfFade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Messages can be selected and copied; app chrome can't be selected by accident */
+.thread-head, .tabbar, .wa-top, .kx-pick-tabs, .icon-round { -webkit-user-select: none; user-select: none; }
+.bubble { -webkit-touch-callout: none; }
+.bubble img { -webkit-user-drag: none; user-drag: none; }
+
+/* Long names and links never push a bubble or header wider than the screen */
+.bubble, .quote, #peerName { overflow-wrap: anywhere; }
+#peerName { max-width: 100%; }
+
+/* Text stays readable when the OS text size is large */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* Respect "reduce motion" everywhere */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

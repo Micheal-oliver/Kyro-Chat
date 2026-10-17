@@ -309,3 +309,23 @@ Files: `kyro-appshell.css`, `js/app-shell.js`, updated `manifest.webmanifest` an
 - **Full-screen polish** — safe-area padding for notches and the home bar (top bar, composer, landscape sides), a splash screen when launched from the home screen, the status bar colour follows the light/dark theme, no whole-page pull-to-refresh bounce, and UI text isn't selected by accident (messages and inputs still are). iPhone meta tags and touch icon added
 - **Share target** — in another app's Share menu choose Kyro, pick a chat, and the text, link or first photo/file is placed in that chat's message box (you tap Send). Needs Kyro installed to the home screen: works on Android Chrome and desktop Chrome/Edge, not on iPhone Safari. Shared items are kept for 15 minutes, so signing in first still works
 - Service worker cache bumped to `kyro-shell-v5`. After deploying, close and reopen the installed app once (Android may need a reinstall to pick up the new Share entry)
+
+## Message search, translate, sticker packs, finish (Oct 17)
+
+Files: `js/msg-search.js` + `kyro-search.css`, `js/translate.js` + `kyro-translate.css`, `js/sticker-packs.js` + `kyro-sticker-packs.css`, `js/finish.js` + `kyro-finish.css` (hook lines in `app.html`). Remove a pair of hook lines to undo that feature. No backend change.
+
+- **Search all messages** — new button next to the search icon on the chat list. Finds text across every chat, with filters (All / From me / From them / one chat), highlighted snippets, and tap-to-jump to the message. Chats are end-to-end encrypted, so the index is built on this device (IndexedDB, per account) from messages the app has already decrypted, and the first open backfills your chats. Disappearing messages are never indexed. "Clear search index" wipes it
+- **Translate** — long-press a message > Translate (tap again to hide). The globe button in a chat header sets the target language and turns on auto-translate for that chat. Uses the browser's on-device Translator when available (messages stay private). Otherwise the app asks once before sending the text of a message to an online service (MyMemory by default). To use your own service set `window.KYRO_TRANSLATE_URL`; it receives `POST {text, target, source}` and returns `{translatedText, detected}`
+- **Sticker packs** — new Packs tab in the sticker picker, with a Pack store: six more packs (Animals, Food, Love, Work, Gaming, Greetings), your own packs (emoji + text stickers or photo stickers), and share/import by pack code (`KSP1:...`, emoji packs only). Limits: 12 packs, 30 stickers per pack, 20 photo stickers
+- **Finish** — chat stays pinned to the latest message when the keyboard opens or photos load, instant taps (no 300ms delay), scroll containment in sheets and lists, keyboard focus rings, fade-in photos, reduced-motion support
+- **PWA icons** — added `images/icon-192.png` and `images/icon-512.png` (the manifest and iOS home-screen icon pointed at files that didn't exist)
+
+## Privacy Policy, Terms and the "agree first" gate (Oct 17)
+
+Files: `privacy.html`, `terms.html`, `legal.css`, `js/legal-config.js`, `js/legal-page.js`, `js/legal-gate.js`.
+
+- **Before you publish:** open `js/legal-config.js` and set `email` (required, shown on both pages; a red setup banner stays on the pages until it is filled in) and optionally `country` (adds a Governing law section). Have a lawyer in your country read both pages. They are a solid starting draft written from what the app actually does, not legal advice
+- **New users** must tick "I agree to the Terms and Privacy Policy" on the sign-up page (links open in a new tab so the form isn't lost). Minimum age is now **13** (was 8), set by `minAge` in `legal-config.js`
+- **Existing users** see a one-time "Before you continue" screen in the app (`legal-gate.js`) with I agree / Log out. Acceptance is stored on the device, per account. Change `version` in `legal-config.js` whenever you change the documents and everyone is asked again
+- Links added: welcome page, login page, sign-up page, and Settings > About in the app
+- Not done yet (needs the backend): recording acceptance (date and version) on the server, enforcing the minimum age server-side, and in-app account deletion

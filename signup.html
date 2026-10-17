@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="kyro-design.css" />
   <link rel="stylesheet" href="auth.css" />
   <link rel="stylesheet" href="kyro-auth.css" />
+  <link rel="stylesheet" href="legal.css" />
 </head>
 <body class="k-auth">
   <div class="ambient">
@@ -40,6 +41,7 @@
         <label for="dob">Date of birth</label>
         <input id="dob" name="dob" type="date" required />
         <p class="age-line" id="ageLine">Age will appear here</p>
+        <label class="legal-check" for="agree"><input id="agree" name="agree" type="checkbox" required /><span>I am <span data-k="minAge">13</span> or older and I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
         <p class="form-error" id="detailsError"></p>
         <button class="btn btn-primary" type="submit" style="width:100%">Send OTP</button>
       </section>
@@ -72,6 +74,8 @@
     </form>
   </main>
   <script src="js/kyro.js"></script>
+  <script src="js/legal-config.js"></script>
+  <script src="js/legal-page.js"></script>
   <script src="js/signup.js"></script>
   <script src="js/auth-fx.js"></script>
   <script src="js/install.js"></script>

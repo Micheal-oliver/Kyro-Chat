@@ -1,0 +1,27 @@
+/* Kyro translate. Pairs with js/translate.js. */
+.bubble .kt-box {
+  margin-top: 6px; padding-top: 6px;
+  border-top: 1px dashed color-mix(in srgb, currentColor 28%, transparent);
+  font-size: 0.94em; line-height: 1.4; opacity: 0.95; overflow-wrap: anywhere;
+  animation: ktIn 0.2s ease both;
+}
+.bubble .kt-text { white-space: pre-wrap; }
+.bubble .kt-meta {
+  display: block; margin-top: 4px; padding: 0; background: none; border: 0; color: inherit; font: inherit;
+  font-size: 0.78em; opacity: 0.7; cursor: pointer; text-align: left;
+}
+@keyframes ktIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 0.95; transform: none; } }
+#threadTranslate { position: relative; }
+#threadTranslate.kt-active::after {
+  content: ""; position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--k-acc, #9b6dff); box-shadow: 0 0 0 2px var(--k-surface, #0f0f23);
+}
+.kt-sheet .kt-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; }
+.kt-sheet .kt-row select {
+  min-width: 140px; height: 40px; border-radius: 12px; padding: 0 10px; font: inherit;
+  background: var(--k-surface-2, #17172f); color: inherit; border: 1px solid var(--k-hair, rgba(255,255,255,.1));
+}
+.kt-sheet .kt-sw small { display: block; opacity: 0.65; font-size: 12px; margin-top: 2px; }
+.kt-sheet .kt-sw input { width: 22px; height: 22px; accent-color: var(--k-acc, #9b6dff); }
+.kt-consent { display: flex; align-items: flex-end; justify-content: center; }
+@media (prefers-reduced-motion: reduce) { .bubble .kt-box { animation: none; } }
