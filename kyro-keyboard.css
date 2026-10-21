@@ -1,0 +1,18 @@
+/* Lifts the chat screen above the on-screen keyboard (js/keyboard.js sets --kb). */
+html { --kb: 0px; }
+
+body.app-body .thread-screen {
+  height: auto !important;
+  min-height: 0 !important;
+  bottom: var(--kb, 0px) !important;
+  transition: bottom 0.18s ease;
+}
+/* the keyboard already covers the safe area, so don't pad for it twice */
+html.kb-open body.app-body .composer { padding-bottom: 8px; }
+
+/* other full-screen sheets/pickers with a text box: keep their bottom clear of the keyboard */
+html.kb-open .modal .sheet,
+html.kb-open .sheet { max-height: calc(100dvh - var(--kb, 0px) - 12px); }
+html.kb-open .modal { bottom: var(--kb, 0px); }
+
+@media (prefers-reduced-motion: reduce) { body.app-body .thread-screen { transition: none; } }

@@ -1,6 +1,6 @@
 /* Network-first service worker: always fetches fresh files, falls back to cache offline.
    Also receives items shared from other apps (manifest share_target) and hands them to app.html. */
-const CACHE = "kyro-shell-v7";
+const CACHE = "kyro-shell-v8";
 const SHARE = "kyro-share";
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
