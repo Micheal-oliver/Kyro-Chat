@@ -110,7 +110,7 @@
     const ring = el("div", "kx-ring");
     ring.style.background = ringBg(a.items, a.mine);
     const av = el("div", "kx-ring-av");
-    setAvatar(av, a.mine ? myAvatar() : "", a.name);
+    setAvatar(av, a.mine ? myAvatar() : (a.latest && a.latest.avatar) || "", a.name);
     ring.appendChild(av);
     b.appendChild(ring);
     b.appendChild(el("span", "kx-card-name", a.mine ? "My status" : a.name.split(" ")[0]));
@@ -181,7 +181,7 @@
     const ring = el("div", "kx-ring kx-ring-row");
     ring.style.background = ringBg(a.items, false);
     const av = el("div", "kx-ring-av");
-    setAvatar(av, "", a.name);
+    setAvatar(av, (a.latest && a.latest.avatar) || "", a.name);
     ring.appendChild(av);
     const col = el("div", "kx-urow-col");
     col.appendChild(el("b", null, a.name));
@@ -392,7 +392,7 @@
     });
     S.fill = V.bars.children[S.si].firstChild;
 
-    setAvatar(V.av, a.mine ? myAvatar() : "", a.name);
+    setAvatar(V.av, a.mine ? myAvatar() : (a.latest && a.latest.avatar) || "", a.name);
     V.nm.textContent = a.mine ? "My status" : a.name;
     V.sub.textContent = ago(s.at);
     V.del.hidden = !a.mine;
